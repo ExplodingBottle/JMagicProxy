@@ -73,7 +73,6 @@ public class SSLDirectiveHandler {
 			return;
 		}
 		try {
-			//System.err.println(directive.getOutcomingRequest().toHttpRequestLine());
 			outputStream.write((directive.getOutcomingRequest().toHttpRequestLine() + "\r\n").getBytes());
 			directive.getOutcomingRequest().getHeaders().forEach((hKey, hVal) -> {
 				try {
@@ -163,28 +162,12 @@ public class SSLDirectiveHandler {
 	/**
 	 * This function will close any outgoing connections.
 	 */
-	public void finishHandler(boolean shouldInterrupt) { // TODO: Correctly implement shouldInterrupt
+	public void finishHandler(boolean shouldInterrupt) {
 		if (!isClosed) {
 			selfLogger.log(LoggingLevel.INFO, "Finishing handler with shouldInterrupt=" + shouldInterrupt);
 			isClosed = true;
 			if (ioPipe != null)
 				ioPipe.interrupt();
-			try {
-				if (inputStream != null) {
-					inputStream.close();
-					inputStream = null;
-				}
-			} catch (IOException e) {
-				selfLogger.log(LoggingLevel.WARN, "Failed to close the input stream coming to outside.", e);
-			}
-			try {
-				if (outputStream != null) {
-					outputStream.close();
-					outputStream = null;
-				}
-			} catch (IOException e) {
-				selfLogger.log(LoggingLevel.WARN, "Failed to close the output stream coming to outside.", e);
-			}
 			try {
 				if (outgoingSocket != null) {
 					outgoingSocket.close();

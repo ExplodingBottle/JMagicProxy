@@ -23,7 +23,6 @@ proxy.logging.logsfolder				| Represents the folder in which you will find log f
 proxy.ssl.enabled						| Choose whether or not if SSL will be supported.
 
 3) Known issues
-	- When gracefully shutting down, the proxy may just not stop.
 	- A lot of exceptions can be thrown in the console.
 
 4) WUProxy Configuration.
@@ -42,5 +41,5 @@ Windows 2000: If you install the proxy certificate as well as the Microsoft Root
 also configure Internet Explorer Proxy AND the System Proxy to point to this proxy, everything will work fine with no modifications.
 
 Windows XP: You need to install this proxy certificate, configure Internet Explorer Proxy AND the System Proxy to point to this proxy
-and then configure the WSUS Server locations as https://fe2.update.microsoft.com/v6
+and then configure the WSUS Server location as https://fe2.update.microsoft.com/v6 and the status server location as http://statsfe2.update.microsoft.com
 The website won't work.

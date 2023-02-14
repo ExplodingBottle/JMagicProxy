@@ -166,7 +166,8 @@ public class ConnectionDirectiveHandler {
 			if (directive.isSSL()) {
 				logger.log(LoggingLevel.INFO, "Opening outgoing socket for " + directive.getHost() + ":"
 						+ directive.getPort() + " with SSL.");
-				sslCommunicator = new SSLComunicator(handlerThread.getOutputStream(), this, directive.getHost(), directive.getPort());
+				sslCommunicator = new SSLComunicator(handlerThread.getOutputStream(), this, directive.getHost(),
+						directive.getPort());
 				sslCommunicator.startConnection();
 
 			} else {
@@ -233,22 +234,6 @@ public class ConnectionDirectiveHandler {
 				pipeThread.interrupt();
 			if (sslCommunicator != null) {
 				sslCommunicator.stopCommunicator();
-			}
-			try {
-				if (inputStream != null) {
-					inputStream.close();
-					inputStream = null;
-				}
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to close the input stream coming from outside.", e);
-			}
-			try {
-				if (outputStream != null) {
-					outputStream.close();
-					outputStream = null;
-				}
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to close the output stream coming from outside.", e);
 			}
 			try {
 				if (referenceSocket != null) {

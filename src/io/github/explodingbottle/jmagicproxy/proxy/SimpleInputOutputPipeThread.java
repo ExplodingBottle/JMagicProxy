@@ -92,6 +92,13 @@ public class SimpleInputOutputPipeThread extends Thread {
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
+				try {
+					HttpResponse.createFromHeaderBlock(lastReadBlock);
+				} catch (MalformedParsableContent e1) {
+					lastReadBlock = new StringBuilder();
+					lastReadLine = new StringBuilder();
+					return toRet;
+				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpResponse response = HttpResponse.createFromHeaderBlock(lastReadBlock);
@@ -123,7 +130,6 @@ public class SimpleInputOutputPipeThread extends Thread {
 							logger.log(LoggingLevel.WARN, "Directive is null, no actions will be taken.");
 						}
 					} catch (MalformedParsableContent e) {
-						//logger.log(LoggingLevel.WARN, "Failed to parse HTTP response coming from the server", e);
 					}
 					lastReadBlock = new StringBuilder();
 				}

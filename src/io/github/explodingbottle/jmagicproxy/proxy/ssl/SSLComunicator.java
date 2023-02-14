@@ -153,18 +153,6 @@ public class SSLComunicator {
 				server.interrupt();
 			if (transferPipeOutToIn != null)
 				transferPipeOutToIn.interrupt();
-			if (inputOutgoing != null)
-				try {
-					inputOutgoing.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close the SSL outgoing input.", e);
-				}
-			if (outputOutgoing != null)
-				try {
-					outputOutgoing.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close the SSL outgoing output.", e);
-				}
 			if (transferSocket != null)
 				try {
 					transferSocket.close();

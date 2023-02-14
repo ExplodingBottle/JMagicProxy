@@ -19,8 +19,12 @@ package io.github.explodingbottle.jmagicproxy;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
+
+import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
+import io.github.explodingbottle.jmagicproxy.logging.ProxyLogger;
 
 /**
  * This class is very useful to find issues that may be related to the
@@ -32,20 +36,44 @@ import java.util.Properties;
 public class DisabledAlgorithmsWarner {
 
 	private Properties javaSecurity;
+	private ProxyLogger logger;
 
 	/**
 	 * Gets ready the warner.
 	 * 
-	 * @throws IOException if an issue happens to load the file.
 	 */
-	public DisabledAlgorithmsWarner() throws IOException {
+	public DisabledAlgorithmsWarner() {
+		logger = ProxyMain.getLoggerProvider().createLogger();
 		javaSecurity = new Properties();
-		FileInputStream is = new FileInputStream(
-				new File(new File(new File(System.getProperty("java.home"), "lib"), "security"), "java.security"));
-		javaSecurity.load(is);
-		is.close();
+		FileInputStream is = null;
+		try {
+			is = new FileInputStream(
+					new File(new File(new File(System.getProperty("java.home"), "lib"), "security"), "java.security"));
+		} catch (FileNotFoundException e) {
+			logger.log(LoggingLevel.WARN,
+					"Failed to open the input stream to check java.security. No warnings will be emitted.", e);
+		}
+		if (is != null) {
+			try {
+				javaSecurity.load(is);
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to load the properties contained in java.security.", e);
+			}
+			try {
+				is.close();
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to close the java.security file.", e);
+			}
+		}
+
 	}
 
+	/**
+	 * This function will say if the user must be warned about the
+	 * jdk.tls.disabledAlgorithms property.
+	 * 
+	 * @return if the user must be warned about jdk.tls.disabledAlgorithms.
+	 */
 	public boolean mustWarn() {
 		String found = javaSecurity.getProperty("jdk.tls.disabledAlgorithms");
 		if (found != null && !found.trim().isEmpty())

@@ -90,14 +90,21 @@ public class SSLInputOutputPipeThread extends Thread {
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
+				try {
+					HttpResponse.createFromHeaderBlock(lastReadBlock);
+				} catch (MalformedParsableContent e1) {
+					lastReadBlock = new StringBuilder();
+					lastReadLine = new StringBuilder();
+					return toRet;
+				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpResponse response = HttpResponse.createFromHeaderBlock(lastReadBlock);
 						HttpResponse response2 = ProxyMain.getPluginsManager().getModifiedSSLResponse(response);
 
 						if (response2 != null) {
-							// toReadBeforeParse =
-							// Integer.parseInt(modifiedResponse.getHeaders().get("Content-Length"));
+							if (response2.getHeaders().get("Content-Length") != null)
+								toReadBeforeParse = Integer.parseInt(response2.getHeaders().get("Content-Length"));
 							canParseHeader = false;
 							out.write((response2.toHttpResponseLine() + "\r\n").getBytes());
 							response2.getHeaders().forEach((hKey, hVal) -> {
@@ -116,8 +123,6 @@ public class SSLInputOutputPipeThread extends Thread {
 							logger.log(LoggingLevel.WARN, "Directive is null, no actions will be taken.");
 						}
 					} catch (MalformedParsableContent e) {
-						// logger.log(LoggingLevel.WARN, "Failed to parse HTTP response coming from the
-						// server", e);
 					}
 					lastReadBlock = new StringBuilder();
 				}

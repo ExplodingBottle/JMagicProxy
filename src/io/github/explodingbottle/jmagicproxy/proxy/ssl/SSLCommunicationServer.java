@@ -50,8 +50,8 @@ public class SSLCommunicationServer extends Thread {
 	private InputStream heartInput; // Just a strange naming, heart like coming from the inside, also like very
 									// intense feelings.
 	private OutputStream heartOutput;
-	private InputStream skinInput;
-	private OutputStream skinOutput;
+
+	private SSLSocket acceptedSocket;
 
 	private SSLComunicator communicator;
 
@@ -75,31 +75,9 @@ public class SSLCommunicationServer extends Thread {
 		if (server != null) {
 			if (outgoingHandler != null)
 				outgoingHandler.finishHandler(true);
-			if (heartInput != null)
-				try {
-					heartInput.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close heart input.", e);
-				}
-			if (heartOutput != null)
-				try {
-					heartOutput.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close heart output.", e);
-				}
-			if (skinInput != null)
-				try {
-					skinInput.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close skin input.", e);
-				}
-			if (skinOutput != null)
-				try {
-					skinOutput.close();
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to close skin output.", e);
-				}
 			try {
+				if (acceptedSocket != null)
+					acceptedSocket.close();
 				if (server != null)
 					server.close();
 				server = null;
@@ -175,6 +153,13 @@ public class SSLCommunicationServer extends Thread {
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
+				try {
+					HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
+				} catch (MalformedParsableContent e1) {
+					lastReadBlock = new StringBuilder();
+					lastReadLine = new StringBuilder();
+					return toRet;
+				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpRequestHeader httpRequestHeader = HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
@@ -193,7 +178,7 @@ public class SSLCommunicationServer extends Thread {
 							break;
 						}
 					} catch (MalformedParsableContent e) {
-						// logger.log(LoggingLevel.WARN, "Failed to parse incoming HTTP request.", e);
+						logger.log(LoggingLevel.WARN, "Failed to parse incoming HTTP request.", e);
 					}
 					lastReadBlock = new StringBuilder();
 				}
@@ -205,8 +190,13 @@ public class SSLCommunicationServer extends Thread {
 
 	public void run() {
 		if (server != null) {
-			SSLSocket acceptedSocket = null;
 			try {
+				try {
+					if (acceptedSocket != null)
+						acceptedSocket.close();
+				} catch (IOException e) {
+					logger.log(LoggingLevel.WARN, "Failed to close the previous SSL socket.", e);
+				}
 				acceptedSocket = (SSLSocket) server.accept();
 			} catch (IOException e) {
 				logger.log(LoggingLevel.WARN, "Failed to accept a SSL socket.", e);

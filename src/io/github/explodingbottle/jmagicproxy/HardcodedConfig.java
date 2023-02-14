@@ -25,6 +25,13 @@ package io.github.explodingbottle.jmagicproxy;
 public class HardcodedConfig {
 
 	/**
+	 * Preventing this class to be instantiated.
+	 */
+	private HardcodedConfig() {
+
+	}
+
+	/**
 	 * Returns the path to the config file.
 	 * 
 	 * @return The config file name or path.

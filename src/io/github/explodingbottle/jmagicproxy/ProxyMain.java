@@ -143,15 +143,11 @@ public class ProxyMain {
 		pluginsManager = new PluginsManager(propsProvider.getAsString(PropertyKey.PROXY_PLUGINS));
 		pluginsManager.loadPlugins();
 		if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_WARN_ALGORITHMS)) {
-			try {
-				DisabledAlgorithmsWarner warner = new DisabledAlgorithmsWarner();
-				if (warner.mustWarn()) {
-					mainLogger.log(LoggingLevel.WARN,
-							"The system has detected that algorithms were present in the jdk.tls.disabledAlgorithms property of java.security. "
-									+ "This will cause issues with SSL and old algorithms.");
-				}
-			} catch (IOException e1) {
-				mainLogger.log(LoggingLevel.WARN, "Failed to check for disabled algorithms.", e1);
+			DisabledAlgorithmsWarner warner = new DisabledAlgorithmsWarner();
+			if (warner.mustWarn()) {
+				mainLogger.log(LoggingLevel.WARN,
+						"The system has detected that algorithms were present in the jdk.tls.disabledAlgorithms property of java.security. "
+								+ "This will cause issues with SSL and old algorithms.");
 			}
 		}
 		if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_ENABLED)) {

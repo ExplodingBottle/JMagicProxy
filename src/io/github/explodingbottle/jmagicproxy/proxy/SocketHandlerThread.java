@@ -82,18 +82,6 @@ public class SocketHandlerThread extends Thread {
 					logger.log(LoggingLevel.WARN, "Failed to close the directive handler.", e);
 				}
 			try {
-				if (input != null)
-					input.close();
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to close the input stream.", e);
-			}
-			try {
-				if (output != null)
-					output.close();
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to close the output stream.", e);
-			}
-			try {
 				if (socket != null)
 					socket.close();
 			} catch (IOException e) {
@@ -109,7 +97,7 @@ public class SocketHandlerThread extends Thread {
 	 * Redefining interrupt to force use of closeListeningSocket().
 	 */
 	public void interrupt() {
-		throw new IllegalAccessError("Should not be called, use closeListeningSocket() instead.");
+		closeListeningSocket();
 	}
 
 	/**
@@ -145,6 +133,13 @@ public class SocketHandlerThread extends Thread {
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
+				try {
+					HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
+				} catch (MalformedParsableContent e1) {
+					lastReadBlock = new StringBuilder();
+					lastReadLine = new StringBuilder();
+					return toRet;
+				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpRequestHeader httpRequestHeader = HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
@@ -179,7 +174,6 @@ public class SocketHandlerThread extends Thread {
 							closeListeningSocket();
 						}
 					} catch (MalformedParsableContent e) {
-						// logger.log(LoggingLevel.WARN, "Failed to parse incoming HTTP request.", e);
 					}
 					lastReadBlock = new StringBuilder();
 				}

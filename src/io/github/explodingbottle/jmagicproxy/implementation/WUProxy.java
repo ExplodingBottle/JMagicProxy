@@ -54,8 +54,8 @@ public class WUProxy extends BasicProxy {
 			}
 			logger.log(LoggingLevel.INFO, "Replaced to a fe2 request.");
 		}
-
-		if (request.getHost().toLowerCase().contains("/windowsupdate/v6/shared/js/redirect.js")) {
+		if (request.getHost().toLowerCase().contains("/windowsupdate/v6/shared/js/redirect.js")
+				|| request.getHost().toLowerCase().contains("/microsoftupdate/v6/shared/js/redirect.js")) {
 			logger.log(LoggingLevel.INFO, "Found a redirect.js request.");
 			File file = new File(ProxyMain.getPropertiesProvider().getAsString(PropertyKey.WUPROXY_REDIRECTJS));
 			if (file.exists()) {
@@ -73,8 +73,7 @@ public class WUProxy extends BasicProxy {
 		if (computed.getOutcomingRequest().getHost().toLowerCase().startsWith("/v6/selfupdate/")
 				&& computed.getHost().equals("fe2.update.microsoft.com")) {
 			logger.log(LoggingLevel.INFO, "Detected a selfupdate to replace line.");
-			if (computed.getOutcomingRequest().getHost().toLowerCase()
-					.contains("/WSUS3/x86/Other/".toLowerCase())) {
+			if (computed.getOutcomingRequest().getHost().toLowerCase().contains("/WSUS3/x86/Other/".toLowerCase())) {
 				logger.log(LoggingLevel.INFO, "Using wsus3 special.");
 				computed.getOutcomingRequest().setHost(computed.getOutcomingRequest().getHost()
 						.replace("/v6/selfupdate/", "/v11/3/windowsupdate/selfupdate/"));
@@ -87,6 +86,15 @@ public class WUProxy extends BasicProxy {
 				computed.getOutcomingRequest().setHost(computed.getOutcomingRequest().getHost()
 						.replace("/v6/selfupdate/", "/v11/3/legacy/windowsupdate/selfupdate/"));
 			}
+		}
+		if (computed.getOutcomingRequest().getHost().toLowerCase().startsWith("/v6/reportingwebservice/")
+				&& computed.getHost().equals("fe2.update.microsoft.com")) {
+			logger.log(LoggingLevel.INFO, "Using statsfe2 special.");
+			computed.getOutcomingRequest().setHost(computed.getOutcomingRequest().getHost()
+					.replace("/v6/ReportingWebService/", "/ReportingWebService/"));
+			computed.setSSL(false);
+			computed.setHost("statsfe2.update.microsoft.com");
+			computed.setPort(80);
 		}
 		return computed;
 	}

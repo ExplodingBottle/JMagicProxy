@@ -71,7 +71,7 @@ public class SocketAcceptorThread extends Thread {
 	 * Redefining interrupt to force use of closeServerSocket().
 	 */
 	public void interrupt() {
-		throw new IllegalAccessError("Should not be called, use closeServerSocket() instead.");
+		closeServerSocket();
 	}
 
 	/**

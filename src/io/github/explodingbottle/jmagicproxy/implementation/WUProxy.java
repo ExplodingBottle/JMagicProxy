@@ -43,6 +43,8 @@ public class WUProxy extends BasicProxy {
 		logger = ProxyMain.getLoggerProvider().createLogger();
 	}
 
+	private static final String WUWEB_SITE_REPLACEMENT = "/v11/3/windowsupdate/SelfUpdate/AU/%ARCH%/XP/en/wuweb.cab";
+
 	@Override
 	public ConnectionDirective onReceiveProxyRequest(HttpRequestHeader request) {
 		ConnectionDirective computed = super.onReceiveProxyRequest(request);
@@ -53,6 +55,35 @@ public class WUProxy extends BasicProxy {
 				computed.getOutcomingRequest().getHeaders().put("Host", "fe2.update.microsoft.com");
 			}
 			logger.log(LoggingLevel.INFO, "Replaced to a fe2 request.");
+		}
+		if (request.getHost().toLowerCase().contains("/windowsupdate/v6/v5controls/")
+				|| request.getHost().toLowerCase().contains("/microsoftupdate/v6/v5controls/")) {
+			String arch = "unk_arch";
+			String query = computed.getOutcomingRequest().getHost();
+			if (query.contains("/x86/")) {
+				arch = "x86";
+			}
+			if (query.contains("/x64/")) {
+				arch = "x64";
+			}
+			// Commented because ds.download.windowsupdate.com doesn't seem to contain ia64
+			// binaries.
+			// if (query.contains("/ia64/")) {
+			// arch = "ia64";
+			// }
+			if (arch.equals("unk_arch")) {
+				logger.log(LoggingLevel.WARN, "Failed to parse architecture for " + query + ".");
+				logger.log(LoggingLevel.WARN, "wuweb_site.cab request won't be redirected.");
+			} else {
+				computed.setHost("ds.download.windowsupdate.com");
+				computed.setPort(80);
+				computed.getOutcomingRequest().setHost(WUWEB_SITE_REPLACEMENT.replace("%ARCH%", arch));
+				if (computed.getOutcomingRequest() != null) {
+					computed.getOutcomingRequest().getHeaders().put("Host", "ds.download.windowsupdate.com");
+				}
+				logger.log(LoggingLevel.INFO,
+						"Replaced to a wuweb_site.cab request to " + computed.getOutcomingRequest().getHost());
+			}
 		}
 		if (request.getHost().toLowerCase().contains("/windowsupdate/v6/shared/js/redirect.js")
 				|| request.getHost().toLowerCase().contains("/microsoftupdate/v6/shared/js/redirect.js")) {

@@ -31,6 +31,8 @@ This proxy consists in a system which allows HTTP and HTTPS requests to be modif
 4) **WUProxy Configuration**
    **IMPORTANT: Some files may be missing if you download the standard release.**
 
+*For detailed instructions about using WUProxy with Windows 2000 and Windows XP, please check out the wiki.*
+
 To allow Windows Update to be used, you must change the property proxy.plugins to
 io.github.explodingbottle.jmagicproxy.implementation.WUProxy;io.github.explodingbottle.jmagicproxy.implementation.BasicProxy
 in order to allow the WUProxy plugin impact requests.

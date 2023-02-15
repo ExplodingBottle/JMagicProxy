@@ -127,6 +127,7 @@ public class SocketHandlerThread extends Thread {
 			lastReadBlock = new StringBuilder();
 		if (lastReadLine == null)
 			lastReadLine = new StringBuilder();
+		boolean gotItOnce = false;
 		for (int it = 0; it < readLength; it++) {
 			byte r = buffer[it];
 			lastReadBlock.append((char) r);
@@ -135,6 +136,7 @@ public class SocketHandlerThread extends Thread {
 				String readLine = lastReadLine.toString();
 				try {
 					HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
+					gotItOnce = true;
 				} catch (MalformedParsableContent e1) {
 					lastReadBlock = new StringBuilder();
 					lastReadLine = new StringBuilder();
@@ -179,6 +181,11 @@ public class SocketHandlerThread extends Thread {
 				}
 				lastReadLine = new StringBuilder();
 			}
+		}
+
+		if (!gotItOnce) {
+			lastReadBlock = new StringBuilder();
+			lastReadLine = new StringBuilder();
 		}
 		return toRet;
 	}

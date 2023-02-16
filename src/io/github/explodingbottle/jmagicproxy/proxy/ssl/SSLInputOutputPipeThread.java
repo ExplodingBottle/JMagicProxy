@@ -143,6 +143,7 @@ public class SSLInputOutputPipeThread extends Thread {
 		logger.log(LoggingLevel.INFO, "Signaling pipe startup for SSL.");
 		try {
 			int read = in.read(transferBuffer, 0, transferBuffer.length);
+			logger.log(LoggingLevel.INFO, "SSL Pipe has read for the first time " + read + " bytes.");
 			while (!interrupted() && read != -1) {
 				Integer offset = null;
 				if (canParseHeader) {

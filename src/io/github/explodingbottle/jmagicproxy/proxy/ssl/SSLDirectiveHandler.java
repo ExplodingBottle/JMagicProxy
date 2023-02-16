@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
 
 import javax.net.ssl.SSLSocket;
@@ -30,6 +29,9 @@ import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.api.SSLControlDirective;
 import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
 import io.github.explodingbottle.jmagicproxy.logging.ProxyLogger;
+import io.github.explodingbottle.jmagicproxy.socketopener.SSLSocketOpener;
+import io.github.explodingbottle.jmagicproxy.socketopener.SocketOpeningTool;
+import io.github.explodingbottle.jmagicproxy.socketopener.StandardSocketOpener;
 
 /**
  * The main goal of this class is to assure an outgoing SSL connection.
@@ -113,32 +115,51 @@ public class SSLDirectiveHandler {
 		} else {
 			if (directive.isSSL()) {
 				selfLogger.log(LoggingLevel.INFO, "The connection will be using outgoing SSL");
-				try {
-					outgoingSocket = obProv.getFactoryOutgoing()
-							.createSocket(InetAddress.getByName(directive.getHost()), directive.getPort());
-					((SSLSocket) outgoingSocket).startHandshake();
-					inputStream = outgoingSocket.getInputStream();
-					outputStream = outgoingSocket.getOutputStream();
-					rewriteDirectiveLine();
-					ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
-					ioPipe.start();
-				} catch (IOException e) {
-					selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing SSL socket.", e);
-					finishHandler(true);
-				}
+				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
+						new SSLSocketOpener(obProv.getFactoryOutgoing()), (s) -> {
+							if (s == null) {
+								selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing SSL socket.");
+								finishHandler(true);
+							} else {
+								try {
+									outgoingSocket = s;
+									((SSLSocket) outgoingSocket).startHandshake();
+									inputStream = outgoingSocket.getInputStream();
+									outputStream = outgoingSocket.getOutputStream();
+									rewriteDirectiveLine();
+									ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
+									ioPipe.start();
+								} catch (IOException e) {
+									selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing SSL socket.", e);
+									finishHandler(true);
+								}
+							}
+						});
+				openingTool.run();
+
 			} else {
 				selfLogger.log(LoggingLevel.INFO, "The connection will be using outgoing standard HTTP.");
-				try {
-					outgoingSocket = new Socket(InetAddress.getByName(directive.getHost()), directive.getPort());
-					inputStream = outgoingSocket.getInputStream();
-					outputStream = outgoingSocket.getOutputStream();
-					rewriteDirectiveLine();
-					ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
-					ioPipe.start();
-				} catch (IOException e) {
-					selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing standard socket.", e);
-					finishHandler(true);
-				}
+				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
+						new StandardSocketOpener(), (s) -> {
+							if (s == null) {
+								selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing standard socket.");
+								finishHandler(true);
+							} else {
+								try {
+									outgoingSocket = s;
+									inputStream = outgoingSocket.getInputStream();
+									outputStream = outgoingSocket.getOutputStream();
+									rewriteDirectiveLine();
+									ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
+									ioPipe.start();
+								} catch (IOException e) {
+									selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing standard socket.",
+											e);
+									finishHandler(true);
+								}
+							}
+						});
+				openingTool.run();
 			}
 		}
 	}

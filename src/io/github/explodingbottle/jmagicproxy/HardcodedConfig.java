@@ -46,7 +46,7 @@ public class HardcodedConfig {
 	 * @return The buffer size.
 	 */
 	public static int returnBufferSize() {
-		return 16384; // Note: I tried before allowing to change the buffer size but, for example, a
+		return 65536; // Note: I tried before allowing to change the buffer size but, for example, a
 						// buffer size of 16 makes cURL not getting the whole content.
 	}
 }

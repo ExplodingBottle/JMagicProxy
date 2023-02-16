@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.Socket;
 
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
@@ -30,6 +29,8 @@ import io.github.explodingbottle.jmagicproxy.api.ConnectionType;
 import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
 import io.github.explodingbottle.jmagicproxy.logging.ProxyLogger;
 import io.github.explodingbottle.jmagicproxy.proxy.ssl.SSLComunicator;
+import io.github.explodingbottle.jmagicproxy.socketopener.SocketOpeningTool;
+import io.github.explodingbottle.jmagicproxy.socketopener.StandardSocketOpener;
 
 /**
  * This class contains code to handle directives.
@@ -173,14 +174,37 @@ public class ConnectionDirectiveHandler {
 			} else {
 				logger.log(LoggingLevel.INFO, "Opening outgoing socket for " + directive.getHost() + ":"
 						+ directive.getPort() + " with request " + directive.getOutcomingRequest().toHttpRequestLine());
+				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
+						new StandardSocketOpener(), (s) -> {
+							if (s == null) {
+								logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.");
+								closeSocket();
+							} else {
+								try {
+									referenceSocket = s;
+									inputStream = referenceSocket.getInputStream();
+									outputStream = referenceSocket.getOutputStream();
+									rewriteDirectiveLine();
+									pipeThread = new SimpleInputOutputPipeThread(inputStream,
+											handlerThread.getOutputStream(), this);
+									pipeThread.start();
+									logger.log(LoggingLevel.INFO, "Outgoing socket opened.");
+								} catch (IOException e) {
+									logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.", e);
+									closeSocket();
+								}
+							}
+						});
 				try {
-					referenceSocket = new Socket(InetAddress.getByName(directive.getHost()), directive.getPort());
-					inputStream = referenceSocket.getInputStream();
-					outputStream = referenceSocket.getOutputStream();
-					rewriteDirectiveLine();
-					pipeThread = new SimpleInputOutputPipeThread(inputStream, handlerThread.getOutputStream(), this);
-					pipeThread.start();
-					logger.log(LoggingLevel.INFO, "Outgoing socket opened.");
+
+					openingTool.run();
+					/*
+					 * referenceSocket = new Socket(InetAddress.getByName(directive.getHost()),
+					 * directive.getPort()); inputStream = referenceSocket.getInputStream();
+					 * outputStream = referenceSocket.getOutputStream(); rewriteDirectiveLine();
+					 * pipeThread = new SimpleInputOutputPipeThread(inputStream,
+					 * handlerThread.getOutputStream(), this); pipeThread.start();
+					 */
 				} catch (Exception e) {
 					logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.", e);
 					closeSocket();

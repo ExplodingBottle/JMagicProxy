@@ -124,6 +124,8 @@ public class ProxyMain {
 		if (ovc != null) {
 			config = ovc;
 		}
+		System.out.println("Please report any bugs to https://github.com/ExplodingBottle/JMagicProxy/issues so a fix can be found.");
+		System.out.println();
 		lgp = new LoggerProvider(true);
 		shutdownThread = new ShutdownThread();
 		Runtime.getRuntime().addShutdownHook(shutdownThread);

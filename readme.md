@@ -44,5 +44,4 @@ Be sure to generate a certificate using the tools available in the certs folder 
 
 **Operating System Status**:
 
-Windows 2000, Windows XP, Windows Server 2003, Windows POSReady 2009 and all the Windows NT 5 operating systems are supported. Please check out the wiki\
-for configuration instructions.
+Windows 2000, Windows XP, Windows Server 2003, Windows POSReady 2009 and all the Windows NT 5 operating systems are supported. Please check out the wiki for configuration instructions.

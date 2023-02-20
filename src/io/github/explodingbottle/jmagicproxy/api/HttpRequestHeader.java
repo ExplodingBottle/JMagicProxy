@@ -155,6 +155,9 @@ public class HttpRequestHeader {
 						throw new MalformedParsableContent("First line is not a correct method.");
 					host = splitedFL[1];
 					httpVersion = splitedFL[2];
+					if (!httpVersion.startsWith("HTTP/")) {
+						throw new MalformedParsableContent("Request version doesn't starts with HTTP.");
+					}
 				} else {
 					throw new MalformedParsableContent("First line doesn't have 3 chunks.");
 				}

@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import javax.net.ssl.SSLSocket;
 
@@ -52,6 +55,12 @@ public class SSLDirectiveHandler {
 
 	private SSLInputOutputPipeThread ioPipe;
 
+	private List<byte[]> toflush;
+	private List<Integer> offsetFlush;
+	private List<Integer> lengthFlush;
+
+	private boolean readyToFlush;
+
 	private boolean isClosed;
 
 	/**
@@ -64,6 +73,10 @@ public class SSLDirectiveHandler {
 		this.parent = parent;
 		selfLogger = ProxyMain.getLoggerProvider().createLogger();
 		isClosed = false;
+		toflush = Collections.synchronizedList(new ArrayList<byte[]>());
+		offsetFlush = Collections.synchronizedList(new ArrayList<Integer>());
+		lengthFlush = Collections.synchronizedList(new ArrayList<Integer>());
+		readyToFlush = false;
 	}
 
 	/**
@@ -108,6 +121,8 @@ public class SSLDirectiveHandler {
 						new String("Content-Length: " + directive.getFileInput().length() + "\r\n\r\n").getBytes());
 				ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
 				ioPipe.start();
+				readyToFlush = true;
+				registerToWaitingQueue(null, 0, 0, true);
 			} catch (IOException e) {
 				selfLogger.log(LoggingLevel.WARN, "Failed to make a fake connection using a file.", e);
 				finishHandler(true);
@@ -129,6 +144,8 @@ public class SSLDirectiveHandler {
 									rewriteDirectiveLine();
 									ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
 									ioPipe.start();
+									readyToFlush = true;
+									registerToWaitingQueue(null, 0, 0, true);
 								} catch (IOException e) {
 									selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing SSL socket.", e);
 									finishHandler(true);
@@ -152,6 +169,8 @@ public class SSLDirectiveHandler {
 									rewriteDirectiveLine();
 									ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
 									ioPipe.start();
+									readyToFlush = true;
+									registerToWaitingQueue(null, 0, 0, true);
 								} catch (IOException e) {
 									selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing standard socket.",
 											e);
@@ -164,6 +183,35 @@ public class SSLDirectiveHandler {
 		}
 	}
 
+	private void internalFlush() {
+		if (readyToFlush) {
+			for (int i = 0; i < toflush.size(); i++) {
+				byte[] buffer = toflush.get(i);
+				int offset = offsetFlush.get(i);
+				int length = lengthFlush.get(i);
+				try {
+					if (outputStream != null) {
+						outputStream.write(buffer, offset, length);
+					}
+				} catch (IOException e) {
+					selfLogger.log(LoggingLevel.WARN, "Failed to write to the outgoing stream.", e);
+				}
+			}
+			toflush.clear();
+			offsetFlush.clear();
+			lengthFlush.clear();
+		}
+	}
+
+	private synchronized void registerToWaitingQueue(byte[] buffer, int offset, int length, boolean flushOnly) {
+		if (!flushOnly) {
+			toflush.add(buffer);
+			offsetFlush.add(offset);
+			lengthFlush.add(length);
+		}
+		internalFlush();
+	}
+
 	/**
 	 * This function is used to tell the outgoing stream informations.
 	 * 
@@ -172,12 +220,11 @@ public class SSLDirectiveHandler {
 	 * @param length The size of the buffer to read and send.
 	 */
 	public void feedOutput(byte[] buffer, int offset, int length) {
-		try {
-			if (outputStream != null)
-				outputStream.write(buffer, offset, length);
-		} catch (IOException e) {
-			selfLogger.log(LoggingLevel.WARN, "Failed to write to the outgoing stream.", e);
+		byte[] copy = new byte[buffer.length];
+		for (int i = 0; i < buffer.length; i++) {
+			copy[i] = buffer[i];
 		}
+		registerToWaitingQueue(copy, offset, length, false);
 	}
 
 	/**

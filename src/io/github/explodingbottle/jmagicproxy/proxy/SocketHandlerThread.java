@@ -153,14 +153,16 @@ public class SocketHandlerThread extends Thread {
 									&& directive.getHost()
 											.equalsIgnoreCase(linkedDirectiveHandler.getDirective().getHost())
 									&& directive.getPort() == linkedDirectiveHandler.getDirective().getPort()
-									&& linkedDirectiveHandler.getConnectionType() == ConnectionType.KEEPALIVE)
+									&& linkedDirectiveHandler.getConnectionType() == ConnectionType.KEEPALIVE
+									&& !linkedDirectiveHandler.isClosed())
 								reuse = true;
 							if (!reuse)
 								linkedDirectiveHandler.closeSocket();
 						}
 						if (directive != null) {
 							if (reuse) {
-								logger.log(LoggingLevel.INFO, "Keep-Alive connection has been reused.");
+								logger.log(LoggingLevel.INFO, "Keep-Alive connection has been reused for "
+										+ directive.getOutcomingRequest().toHttpRequestLine() + ".");
 								linkedDirectiveHandler.setDirective(directive);
 								linkedDirectiveHandler.rewriteDirectiveLine();
 							} else {
@@ -182,7 +184,6 @@ public class SocketHandlerThread extends Thread {
 				lastReadLine = new StringBuilder();
 			}
 		}
-
 		if (!gotItOnce) {
 			lastReadBlock = new StringBuilder();
 			lastReadLine = new StringBuilder();
@@ -203,6 +204,7 @@ public class SocketHandlerThread extends Thread {
 			int readLength = input.read(buffer, 0, buffer.length);
 			while (readLength != -1 && !interrupted()) {
 				Integer offset = handleLineRead(readLength);
+				
 				if (offset != null) {
 					if (linkedDirectiveHandler != null) {
 						linkedDirectiveHandler.feedOutput(buffer, offset, readLength - offset);

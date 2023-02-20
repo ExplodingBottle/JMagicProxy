@@ -90,6 +90,9 @@ public class HttpResponse {
 				String[] splitedFL = line.split(" ");
 				if (splitedFL.length >= 3) {
 					httpVersion = splitedFL[0];
+					if (!httpVersion.startsWith("HTTP/")) {
+						throw new MalformedParsableContent("Response version doesn't starts with HTTP.");
+					}
 					try {
 						responseCode = new Integer(Integer.parseInt(splitedFL[1]));
 					} catch (Exception e) {

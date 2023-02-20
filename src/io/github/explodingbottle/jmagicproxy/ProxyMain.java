@@ -27,6 +27,8 @@ import io.github.explodingbottle.jmagicproxy.logging.ProxyLogger;
 import io.github.explodingbottle.jmagicproxy.properties.PropertiesProvider;
 import io.github.explodingbottle.jmagicproxy.properties.PropertyKey;
 import io.github.explodingbottle.jmagicproxy.proxy.ssl.SSLObjectsProvider;
+import io.github.explodingbottle.jmagicproxy.proxy.ssl.SSLSortEngine;
+import io.github.explodingbottle.jmagicproxy.proxy.ssl.SSLSortMode;
 import io.github.explodingbottle.jmagicproxy.server.SocketAcceptorThread;
 
 /**
@@ -39,6 +41,16 @@ public class ProxyMain {
 	private static LoggerProvider lgp;
 	private static PropertiesProvider propsProvider;
 	private static PluginsManager pluginsManager;
+	private static SSLSortEngine sslSortEngine;
+
+	/**
+	 * Returns the SSL sort engine.
+	 * 
+	 * @return The SSL sort engine.
+	 */
+	public static SSLSortEngine getSSLSortEngine() {
+		return sslSortEngine;
+	}
 
 	/**
 	 * Returns the logger provider.
@@ -124,7 +136,8 @@ public class ProxyMain {
 		if (ovc != null) {
 			config = ovc;
 		}
-		System.out.println("Please report any bugs to https://github.com/ExplodingBottle/JMagicProxy/issues so a fix can be found.");
+		System.out.println(
+				"Please report any bugs to https://github.com/ExplodingBottle/JMagicProxy/issues so a fix can be found.");
 		System.out.println();
 		lgp = new LoggerProvider(true);
 		shutdownThread = new ShutdownThread();
@@ -141,6 +154,13 @@ public class ProxyMain {
 						"Failed to create the logs folder, this may cause issues afterwards.");
 			}
 		}
+		SSLSortMode sortMode = SSLSortMode.NONE;
+		try {
+			sortMode = SSLSortMode.valueOf(propsProvider.getAsString(PropertyKey.PROXY_SSL_SORT_MODE));
+		} catch (IllegalArgumentException e) {
+			mainLogger.log(LoggingLevel.WARN, "Failed to parse sort mode. Default NONE will be used.", e);
+		}
+		sslSortEngine = new SSLSortEngine(sortMode, propsProvider.getAsString(PropertyKey.PROXY_SSL_SORT_LIST));
 		lgp.openLogStream(new File(logsFolder, logPath));
 		pluginsManager = new PluginsManager(propsProvider.getAsString(PropertyKey.PROXY_PLUGINS));
 		pluginsManager.loadPlugins();

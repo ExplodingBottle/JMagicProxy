@@ -33,6 +33,8 @@ public class ConnectionDirective {
 	private boolean isSSL;
 	private HttpRequestHeader outcomingRequest;
 
+	private boolean isDirect;
+
 	private File fileInput;
 
 	private boolean isUsingFile;
@@ -46,13 +48,18 @@ public class ConnectionDirective {
 	 *                         Server Socket.
 	 * @param outcomingRequest Represents the out-coming first line sent to the
 	 *                         server. Ignored if isSSL is true.
+	 * @param isDirect         Represents if the SSL connection must be through our
+	 *                         custom pipe or else direct ( with no modifications ).
+	 *                         Only works with HTTPS, isSSL must be true.
 	 */
-	public ConnectionDirective(String host, int port, boolean isSSL, HttpRequestHeader outcomingRequest) {
+	public ConnectionDirective(String host, int port, boolean isSSL, HttpRequestHeader outcomingRequest,
+			boolean isDirect) {
 		this.host = host;
 		this.port = port;
 		this.isSSL = isSSL;
 		this.outcomingRequest = outcomingRequest;
 		isUsingFile = false;
+		this.isDirect = isDirect;
 	}
 
 	/**
@@ -68,7 +75,7 @@ public class ConnectionDirective {
 	public String toString() {
 		if (!isUsingFile)
 			return "{Host=" + host + ";Port=" + port + ";IsSSL=" + isSSL + ";OutcomingRequest=" + outcomingRequest
-					+ "}";
+					+ ";IsDirect=" + isDirect + "}";
 		else
 			return "{UsingFile=true}";
 	}
@@ -80,6 +87,17 @@ public class ConnectionDirective {
 	 */
 	public File getFileInput() {
 		return fileInput;
+	}
+
+	/**
+	 * Used to set the file used to change content.
+	 * 
+	 * @return The file to replace with.
+	 */
+	public void setFileInput(File input) {
+		fileInput = input;
+		if (fileInput != null)
+			isUsingFile = true;
 	}
 
 	/**
@@ -152,6 +170,24 @@ public class ConnectionDirective {
 	 */
 	public boolean isSSL() {
 		return isSSL;
+	}
+
+	/**
+	 * Gets if the connection will be direct.
+	 * 
+	 * @return True if the connection be direct.
+	 */
+	public boolean isDirect() {
+		return isDirect;
+	}
+
+	/**
+	 * Sets if the connection will be direct.
+	 * 
+	 * @param isDirect corresponds to if the connection will be direct.
+	 */
+	public void setDirect(boolean isDirect) {
+		this.isDirect = isDirect;
 	}
 
 	/**

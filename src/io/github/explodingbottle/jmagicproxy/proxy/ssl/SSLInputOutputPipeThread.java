@@ -71,7 +71,7 @@ public class SSLInputOutputPipeThread extends Thread {
 		logger = ProxyMain.getLoggerProvider().createLogger();
 		transferBuffer = new byte[HardcodedConfig.returnBufferSize()]; // You must respect buffer size here too !.
 		canParseHeader = true;
-		toReadBeforeParse = -1;
+		toReadBeforeParse = 0;
 	}
 
 	private StringBuilder lastReadBlock;
@@ -79,35 +79,45 @@ public class SSLInputOutputPipeThread extends Thread {
 
 	// This code has been borrowed from SocketHandlerThread.
 	private Integer handleLineRead(int readLength) throws IOException {
+		if (!canParseHeader) {
+			return null;
+		}
+
+		int offset = 0;
+		if (toReadBeforeParse != 0) {
+			toReadBeforeParse -= readLength;
+			if (toReadBeforeParse < 0) {
+				lastReadBlock = new StringBuilder();
+				lastReadLine = new StringBuilder();
+				offset = toReadBeforeParse * -1;
+				toReadBeforeParse = 0;
+			}
+		}
+		if (toReadBeforeParse > 0) {
+			lastReadBlock = new StringBuilder();
+			lastReadLine = new StringBuilder();
+			return null;
+		}
 		Integer toRet = null;
 		if (lastReadBlock == null)
 			lastReadBlock = new StringBuilder();
 		if (lastReadLine == null)
 			lastReadLine = new StringBuilder();
-		boolean gotItOnce = false;
-		for (int it = 0; it < readLength; it++) {
+		for (int it = offset; it < readLength; it++) {
 			byte r = transferBuffer[it];
 			lastReadBlock.append((char) r);
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
-				try {
-					HttpResponse.createFromHeaderBlock(lastReadBlock);
-					gotItOnce = true;
-				} catch (MalformedParsableContent e1) {
-					lastReadBlock = new StringBuilder();
-					lastReadLine = new StringBuilder();
-					return toRet;
-				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpResponse response = HttpResponse.createFromHeaderBlock(lastReadBlock);
 						HttpResponse response2 = ProxyMain.getPluginsManager().getModifiedSSLResponse(response);
 
 						if (response2 != null) {
-							if (response2.getHeaders().get("Content-Length") != null)
+							if (response2.getHeaders().get("Content-Length") != null) {
 								toReadBeforeParse = Integer.parseInt(response2.getHeaders().get("Content-Length"));
-							canParseHeader = false;
+							}
 							out.write((response2.toHttpResponseLine() + "\r\n").getBytes());
 							response2.getHeaders().forEach((hKey, hVal) -> {
 								try {
@@ -131,11 +141,6 @@ public class SSLInputOutputPipeThread extends Thread {
 				lastReadLine = new StringBuilder();
 			}
 		}
-
-		if (!gotItOnce) {
-			lastReadBlock = new StringBuilder();
-			lastReadLine = new StringBuilder();
-		}
 		return toRet;
 	}
 
@@ -145,22 +150,7 @@ public class SSLInputOutputPipeThread extends Thread {
 			int read = in.read(transferBuffer, 0, transferBuffer.length);
 			logger.log(LoggingLevel.INFO, "SSL Pipe has read for the first time " + read + " bytes.");
 			while (!interrupted() && read != -1) {
-				Integer offset = null;
-				if (canParseHeader) {
-					offset = handleLineRead(read);
-				} else {
-					if (toReadBeforeParse != -1) {
-						if (toReadBeforeParse >= read) {
-							toReadBeforeParse -= read;
-						} else {
-							toReadBeforeParse = 0;
-						}
-						if (toReadBeforeParse <= 0) {
-							canParseHeader = true;
-							toReadBeforeParse = -1;
-						}
-					}
-				}
+				Integer offset = handleLineRead(read);
 				if (offset != null)
 					out.write(transferBuffer, offset, read - offset);
 				else

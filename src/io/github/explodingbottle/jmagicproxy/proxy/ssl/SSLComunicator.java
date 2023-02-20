@@ -90,41 +90,63 @@ public class SSLComunicator {
 				return;
 			}
 		}
-		server = new SSLCommunicationServer(this);
-		Integer serverPort = server.prepareServerSocket();
-		try {
-			if (serverPort != null) {
+		if (parent.getDirective().isDirect()) {
+			try {
+				transferSocket = new Socket(originalHost, originalPort);
+				inputOutgoing = transferSocket.getInputStream();
+				outputOutgoing = transferSocket.getOutputStream();
 				HttpResponse hrqh = new HttpResponse("HTTP/1.1", 200, "Connection Established",
 						new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
 				output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
-			} else {
-				HttpResponse hrqh = new HttpResponse("HTTP/1.1", 500, "Internal Server Error",
-						new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
-				output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
+				inputOutgoing = transferSocket.getInputStream();
+				outputOutgoing = transferSocket.getOutputStream();
+				if (transferSocket != null) {
+					transferPipeOutToIn = new SimpleTransferPipe(inputOutgoing, output);
+					transferPipeOutToIn.start();
+				}
+				logger.log(LoggingLevel.INFO, "Direct connection established.");
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to write the response line.", e);
 				stopCommunicator();
 				return;
 			}
-		} catch (IOException e) {
-			logger.log(LoggingLevel.WARN, "Failed to write the response line.", e);
-			stopCommunicator();
-			return;
+		} else {
+			server = new SSLCommunicationServer(this);
+			Integer serverPort = server.prepareServerSocket();
+			try {
+				if (serverPort != null) {
+					HttpResponse hrqh = new HttpResponse("HTTP/1.1", 200, "Connection Established",
+							new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
+					output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
+				} else {
+					HttpResponse hrqh = new HttpResponse("HTTP/1.1", 500, "Internal Server Error",
+							new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
+					output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
+					stopCommunicator();
+					return;
+				}
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to write the response line.", e);
+				stopCommunicator();
+				return;
+			}
+			try {
+				server.start();
+				logger.log(LoggingLevel.INFO,
+						"SSL incoming-side comunication has been started and is waiting for an accept on port "
+								+ serverPort + ".");
+				transferSocket = new Socket(InetAddress.getLoopbackAddress(), serverPort);
+				inputOutgoing = transferSocket.getInputStream();
+				outputOutgoing = transferSocket.getOutputStream();
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to start SSL communication.", e);
+			}
+			if (transferSocket != null) {
+				transferPipeOutToIn = new SimpleTransferPipe(inputOutgoing, output);
+				transferPipeOutToIn.start();
+			}
+			logger.log(LoggingLevel.INFO, "SSL transfer is ready for port " + serverPort + ".");
 		}
-		try {
-			server.start();
-			logger.log(LoggingLevel.INFO,
-					"SSL incoming-side comunication has been started and is waiting for an accept on port " + serverPort
-							+ ".");
-			transferSocket = new Socket(InetAddress.getLoopbackAddress(), serverPort);
-			inputOutgoing = transferSocket.getInputStream();
-			outputOutgoing = transferSocket.getOutputStream();
-		} catch (IOException e) {
-			logger.log(LoggingLevel.WARN, "Failed to start SSL communication.", e);
-		}
-		if (transferSocket != null) {
-			transferPipeOutToIn = new SimpleTransferPipe(inputOutgoing, output);
-			transferPipeOutToIn.start();
-		}
-		logger.log(LoggingLevel.INFO, "SSL transfer is ready for port " + serverPort + ".");
 
 	}
 

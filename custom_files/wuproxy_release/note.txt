@@ -5,5 +5,3 @@ Files/Folders Index:
 	certs: Contains all the tools required to produce a certificate in use with WUProxy.
 	content: Contains content that is replaced by the proxy.
 	jmagicproxy.cfg: The configuration file which is ready to use with WUProxy.
-	mu_optin.reg: A registry file to attempt to Opt-In for Microsoft Update ( it didn't work on Windows XP, and still untested on Windows 2000 )
-	mu_optin.vbs: A VisualBasic script which will Opt-In for Microsoft Update ( tested on Windows XP, it works )

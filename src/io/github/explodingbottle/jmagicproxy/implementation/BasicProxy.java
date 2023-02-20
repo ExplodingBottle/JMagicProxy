@@ -31,6 +31,7 @@ import io.github.explodingbottle.jmagicproxy.api.SSLControlDirective;
 import io.github.explodingbottle.jmagicproxy.api.SSLControlInformations;
 import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
 import io.github.explodingbottle.jmagicproxy.logging.ProxyLogger;
+import io.github.explodingbottle.jmagicproxy.proxy.ssl.SSLSortEngine;
 
 /**
  * This is a required basic implementation of the proxy, else it won't work.
@@ -66,6 +67,8 @@ public class BasicProxy extends ProxyPlugin {
 		String realHost = null;
 		int realPort = 80;
 
+		boolean isDirect = false;
+
 		if (method == HttpMethod.CONNECT) {
 			String[] splitedHostURL = host.split(":");
 			if (splitedHostURL.length == 2) {
@@ -81,7 +84,12 @@ public class BasicProxy extends ProxyPlugin {
 				realHost = host;
 				realPort = 443;
 			}
-			isSSL = true;
+			SSLSortEngine engine = ProxyMain.getSSLSortEngine();
+			isDirect = !engine.shouldUseCustomPipe(realHost);
+			if (isDirect) {
+				logger.log(LoggingLevel.INFO, "SSLSortEngine decided that " + realHost + ":" + realPort
+						+ " will be using direct connection.");
+			}
 		} else {
 			String[] splitedHost = host.split("/");
 			if (splitedHost.length >= 3) {
@@ -111,7 +119,7 @@ public class BasicProxy extends ProxyPlugin {
 				return null;
 			}
 		}
-		return new ConnectionDirective(realHost, realPort, isSSL, httpReq);
+		return new ConnectionDirective(realHost, realPort, isSSL, httpReq, isDirect);
 	}
 
 	@Override
@@ -132,8 +140,9 @@ public class BasicProxy extends ProxyPlugin {
 			logger.log(LoggingLevel.INFO, "Detected a Connection header with " + headers.get("Connection"));
 			if ("Close".equalsIgnoreCase(headers.get("Connection")))
 				defaultConType = ConnectionType.CLOSE;
-			if ("Keep-Alive".equalsIgnoreCase(headers.get("Connection")))
+			if ("Keep-Alive".equalsIgnoreCase(headers.get("Connection"))) {
 				defaultConType = ConnectionType.KEEPALIVE;
+			}
 		}
 		return new IncomingTransferDirective(response, defaultConType);
 	}

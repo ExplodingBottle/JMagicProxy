@@ -1,6 +1,0 @@
-Windows Registry Editor Version 5.00
-
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\PendingServiceRegistration\7971f918-a847-4430-9279-4a52d1efe18d]
-"ClientApplicationID"="My App"
-"RegisterWithAU"=dword:00000001
-

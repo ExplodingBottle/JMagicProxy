@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.api.ConnectionDirective;
@@ -63,6 +66,12 @@ public class ConnectionDirectiveHandler {
 
 	private SSLComunicator sslCommunicator;
 
+	private List<byte[]> toflush;
+	private List<Integer> offsetFlush;
+	private List<Integer> lengthFlush;
+
+	private boolean readyToFlush;
+
 	/**
 	 * Constructor for this class which takes the connection directive and the
 	 * handler thread.
@@ -76,6 +85,10 @@ public class ConnectionDirectiveHandler {
 		logger = ProxyMain.getLoggerProvider().createLogger();
 		connectionType = ConnectionType.CLOSE;
 		closed = false;
+		toflush = Collections.synchronizedList(new ArrayList<byte[]>());
+		offsetFlush = Collections.synchronizedList(new ArrayList<Integer>());
+		lengthFlush = Collections.synchronizedList(new ArrayList<Integer>());
+		readyToFlush = false;
 	}
 
 	/**
@@ -170,7 +183,8 @@ public class ConnectionDirectiveHandler {
 				sslCommunicator = new SSLComunicator(handlerThread.getOutputStream(), this, directive.getHost(),
 						directive.getPort());
 				sslCommunicator.startConnection();
-
+				readyToFlush = true;
+				registerToWaitingQueue(null, 0, 0, true);
 			} else {
 				logger.log(LoggingLevel.INFO, "Opening outgoing socket for " + directive.getHost() + ":"
 						+ directive.getPort() + " with request " + directive.getOutcomingRequest().toHttpRequestLine());
@@ -189,6 +203,8 @@ public class ConnectionDirectiveHandler {
 											handlerThread.getOutputStream(), this);
 									pipeThread.start();
 									logger.log(LoggingLevel.INFO, "Outgoing socket opened.");
+									readyToFlush = true;
+									registerToWaitingQueue(null, 0, 0, true);
 								} catch (IOException e) {
 									logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.", e);
 									closeSocket();
@@ -221,12 +237,47 @@ public class ConnectionDirectiveHandler {
 				pipeThread = new SimpleInputOutputPipeThread(inputStream, handlerThread.getOutputStream(), this);
 				pipeThread.start();
 				logger.log(LoggingLevel.INFO, "Outgoing fake socket opened (using file).");
+				readyToFlush = true;
+				registerToWaitingQueue(null, 0, 0, true);
 			} catch (IOException e) {
 				logger.log(LoggingLevel.WARN, "Failed to make a fake connection using a file.", e);
 				closeSocket();
 			}
 		}
 
+	}
+
+	private void internalFlush() {
+		if (readyToFlush) {
+			for (int i = 0; i < toflush.size(); i++) {
+				byte[] buffer = toflush.get(i);
+				int offset = offsetFlush.get(i);
+				int length = lengthFlush.get(i);
+				if (sslCommunicator != null) {
+					sslCommunicator.feedOutput(buffer, offset, length);
+				} else if (outputStream != null) {
+					try {
+						if (outputStream != null) {
+							outputStream.write(buffer, offset, length);
+						}
+					} catch (IOException e) {
+						logger.log(LoggingLevel.WARN, "Failed to write to the outgoing stream.", e);
+					}
+				}
+			}
+			toflush.clear();
+			offsetFlush.clear();
+			lengthFlush.clear();
+		}
+	}
+
+	private synchronized void registerToWaitingQueue(byte[] buffer, int offset, int length, boolean flushOnly) {
+		if (!flushOnly) {
+			toflush.add(buffer);
+			offsetFlush.add(offset);
+			lengthFlush.add(length);
+		}
+		internalFlush();
 	}
 
 	/**
@@ -237,15 +288,20 @@ public class ConnectionDirectiveHandler {
 	 * @param length The size of the buffer to read and send.
 	 */
 	public void feedOutput(byte[] buffer, int offset, int length) {
-		try {
-			if (outputStream != null) {
-				outputStream.write(buffer, offset, length);
-			} else if (sslCommunicator != null) {
-				sslCommunicator.feedOutput(buffer, offset, length);
-			}
-		} catch (IOException e) {
-			logger.log(LoggingLevel.WARN, "Failed to write to the outgoing stream.", e);
+		byte[] copy = new byte[buffer.length];
+		for (int i = 0; i < buffer.length; i++) {
+			copy[i] = buffer[i];
 		}
+		registerToWaitingQueue(copy, offset, length, false);
+	}
+
+	/**
+	 * Used to know if the handler is closed.
+	 * 
+	 * @return Returns if the connection directive handler is closed.
+	 */
+	public boolean isClosed() {
+		return closed;
 	}
 
 	/**
@@ -254,8 +310,9 @@ public class ConnectionDirectiveHandler {
 	public void closeSocket() {
 		if (!closed) {
 			closed = true;
-			if (pipeThread != null)
+			if (pipeThread != null) {
 				pipeThread.interrupt();
+			}
 			if (sslCommunicator != null) {
 				sslCommunicator.stopCommunicator();
 			}

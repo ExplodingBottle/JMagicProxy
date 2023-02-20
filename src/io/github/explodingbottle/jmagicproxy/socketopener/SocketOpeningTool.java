@@ -47,8 +47,6 @@ public class SocketOpeningTool {
 	private boolean hasBeenFound = false;
 	private Consumer<Socket> callback;
 
-	private boolean callBackCalled = false;
-
 	private List<SocketOpeningThread> threads;
 
 	private ProxyLogger logger;
@@ -90,11 +88,6 @@ public class SocketOpeningTool {
 			threads.add(thread);
 			thread.start();
 		}
-		// If someone has a proper fix, please do a Pull Request. This code is
-		// technically bad.
-		while (!callBackCalled) {
-			Thread.yield();
-		}
 	}
 
 	/**
@@ -112,7 +105,6 @@ public class SocketOpeningTool {
 				logger.log(LoggingLevel.INFO, "We found a socket for connection " + host + ":" + port + " for IP "
 						+ received.getInetAddress() + ".");
 				callback.accept(received);
-				callBackCalled = true;
 			} else {
 				try {
 					received.close();

@@ -59,6 +59,9 @@ public class SSLCommunicationServer extends Thread {
 
 	private byte[] buffer;
 
+	private boolean canParseHeader;
+	private int toReadBeforeParse;
+
 	/**
 	 * This constructor is used to create the server
 	 * 
@@ -68,6 +71,8 @@ public class SSLCommunicationServer extends Thread {
 		this.communicator = communicator;
 		logger = ProxyMain.getLoggerProvider().createLogger();
 		buffer = new byte[HardcodedConfig.returnBufferSize()];
+		canParseHeader = true;
+		toReadBeforeParse = 0;
 	}
 
 	public void interrupt() {
@@ -142,26 +147,35 @@ public class SSLCommunicationServer extends Thread {
 
 	// Yes, I borrowed it again, this is a bad practice...
 	private Integer handleLineRead(int readLength) {
+		if (!canParseHeader) {
+			return null;
+		}
+		int offset = 0;
+		if (toReadBeforeParse != 0) {
+			toReadBeforeParse -= readLength;
+			if (toReadBeforeParse < 0) {
+				lastReadBlock = new StringBuilder();
+				lastReadLine = new StringBuilder();
+				offset = toReadBeforeParse * -1;
+				toReadBeforeParse = 0;
+			}
+		}
+		if (toReadBeforeParse > 0) {
+			lastReadBlock = new StringBuilder();
+			lastReadLine = new StringBuilder();
+			return null;
+		}
 		Integer toRet = null;
 		if (lastReadBlock == null)
 			lastReadBlock = new StringBuilder();
 		if (lastReadLine == null)
 			lastReadLine = new StringBuilder();
-		boolean gotItOnce = false;
-		for (int it = 0; it < readLength; it++) {
+		for (int it = offset; it < readLength; it++) {
 			byte r = buffer[it];
 			lastReadBlock.append((char) r);
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
-				try {
-					HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
-					gotItOnce = true;
-				} catch (MalformedParsableContent e1) {
-					lastReadBlock = new StringBuilder();
-					lastReadLine = new StringBuilder();
-					return toRet;
-				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpRequestHeader httpRequestHeader = HttpRequestHeader.createFromHeaderBlock(lastReadBlock);
@@ -169,6 +183,11 @@ public class SSLCommunicationServer extends Thread {
 								.getSSLControlDirective(new SSLControlInformations(httpRequestHeader,
 										communicator.originalHost, communicator.originalPort));
 						if (directive != null) {
+							if (directive.getOutcomingRequest() != null
+									&& directive.getOutcomingRequest().getHeaders().get("Content-Length") != null) {
+								toReadBeforeParse = Integer
+										.parseInt(directive.getOutcomingRequest().getHeaders().get("Content-Length"));
+							}
 							if (outgoingHandler != null) {
 								outgoingHandler.finishHandler(false);
 							}
@@ -180,16 +199,12 @@ public class SSLCommunicationServer extends Thread {
 							break;
 						}
 					} catch (MalformedParsableContent e) {
-						logger.log(LoggingLevel.WARN, "Failed to parse incoming HTTP request.", e);
 					}
 					lastReadBlock = new StringBuilder();
 				}
 				lastReadLine = new StringBuilder();
+
 			}
-		}
-		if (!gotItOnce) {
-			lastReadBlock = new StringBuilder();
-			lastReadLine = new StringBuilder();
 		}
 		return toRet;
 	}
@@ -225,6 +240,7 @@ public class SSLCommunicationServer extends Thread {
 				int read = heartInput.read(buffer, 0, buffer.length);
 				while (!interrupted() && read != -1) {
 					Integer offset = handleLineRead(read);
+					;
 					if (offset != null) {
 						if (outgoingHandler != null)
 							outgoingHandler.feedOutput(buffer, offset, read - offset);

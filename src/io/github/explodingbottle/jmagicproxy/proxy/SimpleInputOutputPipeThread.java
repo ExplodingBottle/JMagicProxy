@@ -73,7 +73,7 @@ public class SimpleInputOutputPipeThread extends Thread {
 		logger = ProxyMain.getLoggerProvider().createLogger();
 		transferBuffer = new byte[HardcodedConfig.returnBufferSize()]; // You must respect buffer size here too !.
 		canParseHeader = true;
-		toReadBeforeParse = -1;
+		toReadBeforeParse = 0;
 	}
 
 	private StringBuilder lastReadBlock;
@@ -81,26 +81,35 @@ public class SimpleInputOutputPipeThread extends Thread {
 
 	// This code has been borrowed from SocketHandlerThread.
 	private Integer handleLineRead(int readLength) throws IOException {
+		if (!canParseHeader) {
+			return null;
+		}
+		int offset = 0;
+		if (toReadBeforeParse != 0) {
+			toReadBeforeParse -= readLength;
+			if (toReadBeforeParse < 0) {
+				lastReadBlock = new StringBuilder();
+				lastReadLine = new StringBuilder();
+				offset = toReadBeforeParse * -1;
+				toReadBeforeParse = 0;
+			}
+		}
+		if (toReadBeforeParse > 0) {
+			lastReadBlock = new StringBuilder();
+			lastReadLine = new StringBuilder();
+			return null;
+		}
 		Integer toRet = null;
 		if (lastReadBlock == null)
 			lastReadBlock = new StringBuilder();
 		if (lastReadLine == null)
 			lastReadLine = new StringBuilder();
-		boolean gotItOnce = false;
-		for (int it = 0; it < readLength; it++) {
+		for (int it = offset; it < readLength; it++) {
 			byte r = transferBuffer[it];
 			lastReadBlock.append((char) r);
 			lastReadLine.append((char) r);
 			if ((char) r == '\n') {
 				String readLine = lastReadLine.toString();
-				try {
-					HttpResponse.createFromHeaderBlock(lastReadBlock);
-					gotItOnce = true;
-				} catch (MalformedParsableContent e1) {
-					lastReadBlock = new StringBuilder();
-					lastReadLine = new StringBuilder();
-					return toRet;
-				}
 				if (readLine.trim().isEmpty()) {
 					try {
 						HttpResponse response = HttpResponse.createFromHeaderBlock(lastReadBlock);
@@ -110,10 +119,13 @@ public class SimpleInputOutputPipeThread extends Thread {
 							HttpResponse modifiedResponse = itd.getResponse();
 							ConnectionType ct = itd.getConnectionType();
 							if (ct == ConnectionType.KEEPALIVE) {
-								toReadBeforeParse = Integer
-										.parseInt(modifiedResponse.getHeaders().get("Content-Length"));
+								if (modifiedResponse.getHeaders().containsKey("Content-Length")) {
+									toReadBeforeParse = Integer
+											.parseInt(modifiedResponse.getHeaders().get("Content-Length"));
+								}
+							} else {
+								canParseHeader = false;
 							}
-							canParseHeader = false;
 							parent.setConnectionType(ct);
 							out.write((modifiedResponse.toHttpResponseLine() + "\r\n").getBytes());
 							modifiedResponse.getHeaders().forEach((hKey, hVal) -> {
@@ -132,51 +144,42 @@ public class SimpleInputOutputPipeThread extends Thread {
 							logger.log(LoggingLevel.WARN, "Directive is null, no actions will be taken.");
 						}
 					} catch (MalformedParsableContent e) {
+
 					}
 					lastReadBlock = new StringBuilder();
 				}
 				lastReadLine = new StringBuilder();
-			}
-		}
 
-		if (!gotItOnce) {
-			lastReadBlock = new StringBuilder();
-			lastReadLine = new StringBuilder();
+			}
 		}
 		return toRet;
 	}
 
+	@Override
 	public void run() {
 		logger.log(LoggingLevel.INFO, "Signaling pipe startup.");
 		try {
 			int read = in.read(transferBuffer, 0, transferBuffer.length);
 			while (!interrupted() && read != -1) {
-				Integer offset = null;
-				if (canParseHeader) {
-					offset = handleLineRead(read);
-				} else {
-					if (toReadBeforeParse != -1) {
-						if (toReadBeforeParse >= read) {
-							toReadBeforeParse -= read;
-						} else {
-							toReadBeforeParse = 0;
-						}
-						if (toReadBeforeParse <= 0) {
-							canParseHeader = true;
-							toReadBeforeParse = -1;
-						}
+				if (!isInterrupted()) {
+					Integer offset = handleLineRead(read);
+					if (offset != null) {
+						out.write(transferBuffer, offset, read - offset);
+					} else {
+						out.write(transferBuffer, 0, read);
 					}
+					read = in.read(transferBuffer, 0, transferBuffer.length);
 				}
-				if (offset != null)
-					out.write(transferBuffer, offset, read - offset);
-				else
-					out.write(transferBuffer, 0, read);
-				read = in.read(transferBuffer, 0, transferBuffer.length);
+			}
+			if (read == -1) {
+				logger.log(LoggingLevel.INFO, "Server has terminated the stream. Forcing connection mode to Close.");
+				parent.setConnectionType(ConnectionType.CLOSE);
 			}
 		} catch (IOException e) {
 			if (!isInterrupted())
 				logger.log(LoggingLevel.WARN, "An unexpected stream closure happened.", e);
 		}
+		logger.log(LoggingLevel.INFO, "Thread can be interrupted now !");
 		parent.signalThreadClose();
 	}
 

@@ -189,8 +189,22 @@ public class ConnectionDirectiveHandler {
 				logger.log(LoggingLevel.INFO, "Opening outgoing socket for " + directive.getHost() + ":"
 						+ directive.getPort() + " with request " + directive.getOutcomingRequest().toHttpRequestLine());
 				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
-						new StandardSocketOpener(), (s) -> {
+						new StandardSocketOpener(), (s, status) -> {
 							if (s == null) {
+								try {
+									if (!status) {
+										handlerThread.getOutputStream()
+												.write(new String("HTTP/1.1 504 Gateway Timeout\r\n").getBytes());
+									} else {
+										handlerThread.getOutputStream()
+												.write(new String("HTTP/1.1 502 Bad Gateway\r\n").getBytes());
+									}
+									handlerThread.getOutputStream()
+											.write(new String("Connection: Close\r\n\r\n").getBytes());
+								} catch (IOException e) {
+									logger.log(LoggingLevel.WARN, "Failed to tell the client that an error occured.",
+											e);
+								}
 								logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.");
 								closeSocket();
 							} else {

@@ -24,7 +24,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
@@ -45,7 +45,7 @@ public class SocketOpeningTool {
 	private SocketOpener opener;
 
 	private boolean hasBeenFound = false;
-	private Consumer<Socket> callback;
+	private BiConsumer<Socket, Boolean> callback;
 
 	private List<SocketOpeningThread> threads;
 
@@ -61,7 +61,7 @@ public class SocketOpeningTool {
 	 *                 obtain a socket or {@code null} if every sockets has failed
 	 *                 to connect.
 	 */
-	public SocketOpeningTool(String host, int port, SocketOpener opener, Consumer<Socket> callback) {
+	public SocketOpeningTool(String host, int port, SocketOpener opener, BiConsumer<Socket, Boolean> callback) {
 		this.host = host;
 		this.port = port;
 		this.opener = opener;
@@ -80,7 +80,7 @@ public class SocketOpeningTool {
 			resolvedAddresses = InetAddress.getAllByName(host);
 		} catch (UnknownHostException e) {
 			logger.log(LoggingLevel.WARN, "Failed to get IPs of an unknown host.", e);
-			callback.accept(null);
+			callback.accept(null, true);
 			return;
 		}
 		for (InetAddress address : resolvedAddresses) {
@@ -104,7 +104,7 @@ public class SocketOpeningTool {
 				hasBeenFound = true;
 				logger.log(LoggingLevel.INFO, "We found a socket for connection " + host + ":" + port + " for IP "
 						+ received.getInetAddress() + ".");
-				callback.accept(received);
+				callback.accept(received, false);
 			} else {
 				try {
 					received.close();
@@ -115,7 +115,7 @@ public class SocketOpeningTool {
 		}
 		if (!hasBeenFound && threads.size() == 0) {
 			logger.log(LoggingLevel.WARN, "We found NO socket for connection " + host + ":" + port + ".");
-			callback.accept(null);
+			callback.accept(null, false);
 		}
 	}
 

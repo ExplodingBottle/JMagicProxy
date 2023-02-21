@@ -131,8 +131,21 @@ public class SSLDirectiveHandler {
 			if (directive.isSSL()) {
 				selfLogger.log(LoggingLevel.INFO, "The connection will be using outgoing SSL");
 				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
-						new SSLSocketOpener(obProv.getFactoryOutgoing()), (s) -> {
+						new SSLSocketOpener(obProv.getFactoryOutgoing()), (s, status) -> {
 							if (s == null) {
+								try {
+									if (!status) {
+										parent.getHeartOutput()
+												.write(new String("HTTP/1.1 504 Gateway Timeout\r\n").getBytes());
+									} else {
+										parent.getHeartOutput()
+												.write(new String("HTTP/1.1 502 Bad Gateway\r\n").getBytes());
+									}
+									parent.getHeartOutput().write(new String("Connection: Close\r\n\r\n").getBytes());
+								} catch (IOException e) {
+									selfLogger.log(LoggingLevel.WARN,
+											"Failed to tell the client that an error occured.", e);
+								}
 								selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing SSL socket.");
 								finishHandler(true);
 							} else {
@@ -157,8 +170,21 @@ public class SSLDirectiveHandler {
 			} else {
 				selfLogger.log(LoggingLevel.INFO, "The connection will be using outgoing standard HTTP.");
 				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
-						new StandardSocketOpener(), (s) -> {
+						new StandardSocketOpener(), (s, status) -> {
 							if (s == null) {
+								try {
+									if (!status) {
+										parent.getHeartOutput()
+												.write(new String("HTTP/1.1 504 Gateway Timeout\r\n").getBytes());
+									} else {
+										parent.getHeartOutput()
+												.write(new String("HTTP/1.1 502 Bad Gateway\r\n").getBytes());
+									}
+									parent.getHeartOutput().write(new String("Connection: Close\r\n\r\n").getBytes());
+								} catch (IOException e) {
+									selfLogger.log(LoggingLevel.WARN,
+											"Failed to tell the client that an error occured.", e);
+								}
 								selfLogger.log(LoggingLevel.WARN, "Failed to open the outgoing standard socket.");
 								finishHandler(true);
 							} else {

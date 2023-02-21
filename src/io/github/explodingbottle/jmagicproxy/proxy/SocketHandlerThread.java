@@ -204,7 +204,7 @@ public class SocketHandlerThread extends Thread {
 			int readLength = input.read(buffer, 0, buffer.length);
 			while (readLength != -1 && !interrupted()) {
 				Integer offset = handleLineRead(readLength);
-				
+
 				if (offset != null) {
 					if (linkedDirectiveHandler != null) {
 						linkedDirectiveHandler.feedOutput(buffer, offset, readLength - offset);

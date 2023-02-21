@@ -20,6 +20,7 @@ package io.github.explodingbottle.jmagicproxy;
 import java.io.File;
 import java.io.IOException;
 
+import io.github.explodingbottle.explodingau.ExplodingAULib;
 import io.github.explodingbottle.jmagicproxy.api.PluginsManager;
 import io.github.explodingbottle.jmagicproxy.logging.LoggerProvider;
 import io.github.explodingbottle.jmagicproxy.logging.LoggingLevel;
@@ -123,6 +124,7 @@ public class ProxyMain {
 	 * @param args Represents the command line arguments.
 	 */
 	public static void main(String[] args) {
+		ExplodingAULib.standardProgramRoutine("JMagicProxy"); // Automatic Updates Implementation
 		ArgumentsParser agp = new ArgumentsParser(args);
 		String config = HardcodedConfig.getConfigFileName();
 		String ovc = agp.getArgumentByName("override-config");

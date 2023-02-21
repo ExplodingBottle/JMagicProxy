@@ -1,7 +1,8 @@
 JMagicProxy
 ===========
 
-This proxy consists in a system which allows HTTP and HTTPS requests to be modified.
+This proxy consists in a system which allows HTTP and HTTPS requests to be modified.\
+This project requires ExplodingAULib for recompiling.
 
 1) **Command line arguments**
 

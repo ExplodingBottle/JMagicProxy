@@ -240,7 +240,6 @@ public class SSLCommunicationServer extends Thread {
 				int read = heartInput.read(buffer, 0, buffer.length);
 				while (!interrupted() && read != -1) {
 					Integer offset = handleLineRead(read);
-					;
 					if (offset != null) {
 						if (outgoingHandler != null)
 							outgoingHandler.feedOutput(buffer, offset, read - offset);

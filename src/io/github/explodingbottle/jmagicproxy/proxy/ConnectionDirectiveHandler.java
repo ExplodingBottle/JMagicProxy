@@ -22,9 +22,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.api.ConnectionDirective;
@@ -228,13 +232,6 @@ public class ConnectionDirectiveHandler {
 				try {
 
 					openingTool.run();
-					/*
-					 * referenceSocket = new Socket(InetAddress.getByName(directive.getHost()),
-					 * directive.getPort()); inputStream = referenceSocket.getInputStream();
-					 * outputStream = referenceSocket.getOutputStream(); rewriteDirectiveLine();
-					 * pipeThread = new SimpleInputOutputPipeThread(inputStream,
-					 * handlerThread.getOutputStream(), this); pipeThread.start();
-					 */
 				} catch (Exception e) {
 					logger.log(LoggingLevel.WARN, "Failed to open the outgoing socket.", e);
 					closeSocket();
@@ -246,6 +243,12 @@ public class ConnectionDirectiveHandler {
 				inputStream = new FileInputStream(directive.getFileInput());
 				handlerThread.getOutputStream().write(new String("HTTP/1.1 200 OK\r\n").getBytes());
 				handlerThread.getOutputStream().write(new String("Connection: Keep-Alive\r\n").getBytes());
+				SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+				f.setTimeZone(TimeZone.getTimeZone("GMT"));
+				String lM = f.format(new Date(directive.getFileInput().lastModified()));
+				handlerThread.getOutputStream().write(new String("Last-Modified: " + lM + "\r\n").getBytes());
+				handlerThread.getOutputStream()
+						.write(new String("Content-Type: application/octet-stream\r\n").getBytes());
 				handlerThread.getOutputStream().write(
 						new String("Content-Length: " + directive.getFileInput().length() + "\r\n\r\n").getBytes());
 				pipeThread = new SimpleInputOutputPipeThread(inputStream, handlerThread.getOutputStream(), this);

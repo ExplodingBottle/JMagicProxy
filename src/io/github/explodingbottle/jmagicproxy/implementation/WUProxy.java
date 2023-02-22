@@ -43,6 +43,8 @@ public class WUProxy extends BasicProxy {
 
 	private static final String DLREP1_REPLACEMENT = "/v9/windowsupdate/a/selfupdate/";
 	private static final String DLREP2_REPLACEMENT = "/v11/3/windowsupdate/selfupdate/";
+	private static final String MU_DLREP1_REPLACEMENT = "/v9/microsoftupdate/a/selfupdate/";
+	private static final String MU_DLREP2_REPLACEMENT = "/v9/1/microsoftupdate/b/selfupdate/";
 
 	@Override
 	public ConnectionDirective onReceiveProxyRequest(HttpRequestHeader request) {
@@ -62,6 +64,21 @@ public class WUProxy extends BasicProxy {
 				String preHost = computed.getOutcomingRequest().getHost();
 				computed.getOutcomingRequest()
 						.setHost(preHost.toLowerCase().replace(DLREP2_REPLACEMENT, DLREP1_REPLACEMENT));
+				if (computed.getOutcomingRequest() != null) {
+					computed.getOutcomingRequest().getHeaders().put("Host", "download.windowsupdate.com");
+				}
+				logger.log(LoggingLevel.INFO,
+						"Replaced " + preHost + " by " + computed.getOutcomingRequest().getHost() + ".");
+			}
+		}
+
+		if (ProxyMain.getPropertiesProvider().getAsBoolean(PropertyKey.WUPROXY_REDIRECT_WUCLIENT)) {
+			if (request.getHost().toLowerCase().contains(MU_DLREP2_REPLACEMENT)) {
+				computed.setHost("download.windowsupdate.com");
+				computed.setPort(80);
+				String preHost = computed.getOutcomingRequest().getHost();
+				computed.getOutcomingRequest()
+						.setHost(preHost.toLowerCase().replace(MU_DLREP2_REPLACEMENT, MU_DLREP1_REPLACEMENT));
 				if (computed.getOutcomingRequest() != null) {
 					computed.getOutcomingRequest().getHeaders().put("Host", "download.windowsupdate.com");
 				}

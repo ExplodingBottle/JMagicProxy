@@ -22,9 +22,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.net.ssl.SSLSocket;
 
@@ -117,6 +121,11 @@ public class SSLDirectiveHandler {
 				inputStream = new FileInputStream(directive.getFileInput());
 				parent.getHeartOutput().write(new String("HTTP/1.1 200 OK\r\n").getBytes());
 				parent.getHeartOutput().write(new String("Connection: Keep-Alive\r\n").getBytes());
+				SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+				f.setTimeZone(TimeZone.getTimeZone("GMT"));
+				String lM = f.format(new Date(directive.getFileInput().lastModified()));
+				parent.getHeartOutput().write(new String("Last-Modified: " + lM + "\r\n").getBytes());
+				parent.getHeartOutput().write(new String("Content-Type: application/octet-stream\r\n").getBytes());
 				parent.getHeartOutput().write(
 						new String("Content-Length: " + directive.getFileInput().length() + "\r\n\r\n").getBytes());
 				ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);

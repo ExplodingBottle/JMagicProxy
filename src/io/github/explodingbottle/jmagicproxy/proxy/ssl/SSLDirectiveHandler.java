@@ -238,6 +238,15 @@ public class SSLDirectiveHandler {
 		}
 	}
 
+	/**
+	 * Returns the SSL Control Directive.
+	 * 
+	 * @return The SSL Control Directive.
+	 */
+	public SSLControlDirective getControlDirective() {
+		return directive;
+	}
+
 	private synchronized void registerToWaitingQueue(byte[] buffer, int offset, int length, boolean flushOnly) {
 		if (!flushOnly) {
 			toflush.add(buffer);

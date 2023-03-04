@@ -207,11 +207,31 @@ public class SocketHandlerThread extends Thread {
 
 				if (offset != null) {
 					if (linkedDirectiveHandler != null) {
+						byte[] realData = new byte[readLength - offset];
+						for (int i = 0; i < readLength - offset; i++) {
+							realData[i] = buffer[i + offset];
+						}
+						realData = ProxyMain.getPluginsManager().getModifiedData(1,
+								linkedDirectiveHandler.getDirective(), realData, null);
+						linkedDirectiveHandler.feedOutput(realData, 0, realData.length);
+					} else {
 						linkedDirectiveHandler.feedOutput(buffer, offset, readLength - offset);
 					}
 				} else {
 					if (linkedDirectiveHandler != null) {
-						linkedDirectiveHandler.feedOutput(buffer, 0, readLength);
+						if (!linkedDirectiveHandler.getDirective().isSSL()) {
+							byte[] realData = new byte[readLength];
+							for (int i = 0; i < readLength; i++) {
+								realData[i] = buffer[i];
+							}
+							realData = ProxyMain.getPluginsManager().getModifiedData(1,
+									linkedDirectiveHandler.getDirective(), realData, null);
+							if (linkedDirectiveHandler != null) {
+								linkedDirectiveHandler.feedOutput(realData, 0, realData.length);
+							}
+						} else {
+							linkedDirectiveHandler.feedOutput(buffer, 0, readLength);
+						}
 					}
 				}
 				readLength = input.read(buffer, 0, buffer.length);

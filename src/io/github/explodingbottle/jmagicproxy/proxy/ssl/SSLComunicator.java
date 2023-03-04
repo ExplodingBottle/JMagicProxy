@@ -182,9 +182,10 @@ public class SSLComunicator {
 					logger.log(LoggingLevel.WARN, "Failed to close the simple SSL transfer socket.", e);
 				}
 			if (parent != null) {
-				parent.setConnectionType(ConnectionType.CLOSE); // In SSL, the tunnel must ALWAYS be closed.
-				parent.closeSocket();
+				ConnectionDirectiveHandler backup = parent;
 				parent = null;
+				backup.setConnectionType(ConnectionType.CLOSE); // In SSL, the tunnel must ALWAYS be closed.
+				backup.closeSocket();
 			}
 		}
 	}

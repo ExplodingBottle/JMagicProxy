@@ -158,4 +158,26 @@ public class BasicProxy extends ProxyPlugin {
 		return response;
 	}
 
+	@Override
+	public byte[] getModifiedAnswerForServer(byte[] original, ConnectionDirective linkedDirective) {
+		return original;
+	}
+
+	@Override
+	public byte[] getModifiedAnswerForClient(byte[] original, ConnectionDirective linkedDirective,
+			IncomingTransferDirective additionalInformations) {
+		return original;
+	}
+
+	@Override
+	public byte[] getModifiedAnswerForServerSSL(byte[] original, SSLControlDirective linkedDirective) {
+		return original;
+	}
+
+	@Override
+	public byte[] getModifiedAnswerForClientSSL(byte[] original, SSLControlDirective linkedDirective,
+			HttpResponse additionalInformations) {
+		return original;
+	}
+
 }

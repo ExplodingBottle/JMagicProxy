@@ -69,6 +69,39 @@ public abstract class ProxyPlugin {
 	public abstract HttpResponse onReceiveServerSSLAnswer(HttpResponse response);
 
 	/**
+	 * This represents what kind of data coming from client will be modified to the
+	 * server.
+	 * 
+	 * @param original        The data coming from the client.
+	 * @param linkedDirective The linked directive.
+	 * @return The data to be sent to the server.
+	 */
+	public abstract byte[] getModifiedAnswerForServer(byte[] original, ConnectionDirective linkedDirective);
+
+	/**
+	 * This represents what kind of data coming from server will be modified to the
+	 * client.
+	 * 
+	 * @param original               The data coming from the server.
+	 * @param linkedDirective        The linked directive.
+	 * @param additionalInformations Represents the response from the server.
+	 * @return The data to be sent to the client.
+	 */
+	public abstract byte[] getModifiedAnswerForClient(byte[] original, ConnectionDirective linkedDirective,
+			IncomingTransferDirective additionalInformations);
+
+	/**
+	 * Same at {code getModifiedAnswerForServer} but for SSL.
+	 */
+	public abstract byte[] getModifiedAnswerForServerSSL(byte[] original, SSLControlDirective linkedDirective);
+
+	/**
+	 * Same at {code getModifiedAnswerForClient} but for SSL.
+	 */
+	public abstract byte[] getModifiedAnswerForClientSSL(byte[] original, SSLControlDirective linkedDirective,
+			HttpResponse additionalInformations);
+
+	/**
 	 * This function is used to make the plugin display a better name than only the
 	 * class name.
 	 * 

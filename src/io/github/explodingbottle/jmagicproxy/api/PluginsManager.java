@@ -147,6 +147,51 @@ public class PluginsManager {
 	}
 
 	/**
+	 * Gives you the modified data to be sent to the client or server, in SSL or
+	 * not.
+	 * 
+	 * @param nDir         The directive number: 1. HTTP(Client => Server) 2.
+	 *                     HTTP(Server => Client) 3. HTTPS(Client => Server) 4.
+	 *                     HTTPS(Server => Client)
+	 * @param informations The directive.
+	 * @param info2        The additional informations.
+	 * @param original     Original data.
+	 * @return The modified data or the same data.
+	 */
+	public byte[] getModifiedData(int nDir, Object informations, byte[] original, Object info2) {
+		assert nDir == 1 || nDir == 2 || nDir == 3 || nDir == 4;
+		byte[] data = null;
+		for (ProxyPlugin plugin : plugins) {
+			byte[] dir = null;
+			if (nDir == 1) {
+				dir = plugin.getModifiedAnswerForServer(original, (ConnectionDirective) informations);
+			}
+			if (nDir == 2) {
+				dir = plugin.getModifiedAnswerForClient(original, (ConnectionDirective) informations,
+						(IncomingTransferDirective) info2);
+			}
+			if (nDir == 3) {
+				dir = plugin.getModifiedAnswerForServerSSL(original, (SSLControlDirective) informations);
+			}
+			if (nDir == 4) {
+				dir = plugin.getModifiedAnswerForClientSSL(original, (SSLControlDirective) informations,
+						(HttpResponse) info2);
+			}
+			if (dir != null) {
+				data = dir;
+				logger.log(LoggingLevel.INFO, "The plugin \"" + plugin.returnPluginName()
+						+ "\" returned the first modified data, its data will be used.");
+				break;
+			}
+		}
+		if (data == null) {
+			logger.log(LoggingLevel.WARN,
+					"Modified data was null, this could be due to a misconfiguration, like a removal of the BasicProxy plugin.");
+		}
+		return data;
+	}
+
+	/**
 	 * This function will load all the plugins.
 	 */
 	public void loadPlugins() {

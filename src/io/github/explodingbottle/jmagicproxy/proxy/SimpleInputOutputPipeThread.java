@@ -58,6 +58,8 @@ public class SimpleInputOutputPipeThread extends Thread {
 
 	private ConnectionDirectiveHandler parent;
 
+	private IncomingTransferDirective lastTransferDirective;
+
 	/**
 	 * This constructs the pipe.
 	 * 
@@ -116,6 +118,7 @@ public class SimpleInputOutputPipeThread extends Thread {
 						IncomingTransferDirective itd = ProxyMain.getPluginsManager()
 								.getIncomingTransferDirective(response);
 						if (itd != null) {
+							lastTransferDirective = itd;
 							HttpResponse modifiedResponse = itd.getResponse();
 							ConnectionType ct = itd.getConnectionType();
 							if (ct == ConnectionType.KEEPALIVE) {
@@ -164,9 +167,21 @@ public class SimpleInputOutputPipeThread extends Thread {
 				if (!isInterrupted()) {
 					Integer offset = handleLineRead(read);
 					if (offset != null) {
-						out.write(transferBuffer, offset, read - offset);
+						byte[] realData = new byte[read - offset];
+						for (int i = 0; i < read - offset; i++) {
+							realData[i] = transferBuffer[i + offset];
+						}
+						realData = ProxyMain.getPluginsManager().getModifiedData(2, parent.getDirective(), realData,
+								lastTransferDirective);
+						out.write(realData, 0, realData.length);
 					} else {
-						out.write(transferBuffer, 0, read);
+						byte[] realData = new byte[read];
+						for (int i = 0; i < read; i++) {
+							realData[i] = transferBuffer[i];
+						}
+						realData = ProxyMain.getPluginsManager().getModifiedData(2, parent.getDirective(), realData,
+								lastTransferDirective);
+						out.write(realData, 0, realData.length);
 					}
 					read = in.read(transferBuffer, 0, transferBuffer.length);
 				}

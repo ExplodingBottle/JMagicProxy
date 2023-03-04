@@ -241,11 +241,27 @@ public class SSLCommunicationServer extends Thread {
 				while (!interrupted() && read != -1) {
 					Integer offset = handleLineRead(read);
 					if (offset != null) {
-						if (outgoingHandler != null)
-							outgoingHandler.feedOutput(buffer, offset, read - offset);
+						if (outgoingHandler != null) {
+							byte[] realData = new byte[read - offset];
+							for (int i = 0; i < read - offset; i++) {
+								realData[i] = buffer[i + offset];
+							}
+							realData = ProxyMain.getPluginsManager().getModifiedData(3,
+									outgoingHandler.getControlDirective(), realData, null);
+							outgoingHandler.feedOutput(realData, 0, realData.length);
+							// outgoingHandler.feedOutput(buffer, offset, read - offset);
+						}
 					} else {
-						if (outgoingHandler != null)
-							outgoingHandler.feedOutput(buffer, 0, read);
+						if (outgoingHandler != null) {
+							byte[] realData = new byte[read];
+							for (int i = 0; i < read; i++) {
+								realData[i] = buffer[i];
+							}
+							realData = ProxyMain.getPluginsManager().getModifiedData(3,
+									outgoingHandler.getControlDirective(), realData, null);
+							outgoingHandler.feedOutput(realData, 0, realData.length);
+							// outgoingHandler.feedOutput(buffer, 0, read);
+						}
 					}
 					read = heartInput.read(buffer, 0, buffer.length);
 				}

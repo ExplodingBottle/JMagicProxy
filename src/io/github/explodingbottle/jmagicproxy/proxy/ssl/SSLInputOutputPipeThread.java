@@ -56,6 +56,8 @@ public class SSLInputOutputPipeThread extends Thread {
 
 	private SSLDirectiveHandler parent;
 
+	private HttpResponse lastRepsonse;
+
 	/**
 	 * This constructs the pipe.
 	 * 
@@ -115,6 +117,7 @@ public class SSLInputOutputPipeThread extends Thread {
 						HttpResponse response2 = ProxyMain.getPluginsManager().getModifiedSSLResponse(response);
 
 						if (response2 != null) {
+							lastRepsonse = response2;
 							if (response2.getHeaders().get("Content-Length") != null) {
 								toReadBeforeParse = Integer.parseInt(response2.getHeaders().get("Content-Length"));
 							}
@@ -151,10 +154,28 @@ public class SSLInputOutputPipeThread extends Thread {
 			logger.log(LoggingLevel.INFO, "SSL Pipe has read for the first time " + read + " bytes.");
 			while (!interrupted() && read != -1) {
 				Integer offset = handleLineRead(read);
-				if (offset != null)
+
+				if (offset != null) {
+					byte[] realData = new byte[read - offset];
+					for (int i = 0; i < read - offset; i++) {
+						realData[i] = transferBuffer[i + offset];
+					}
+					realData = ProxyMain.getPluginsManager().getModifiedData(4, parent.getControlDirective(), realData,
+							lastRepsonse);
+					out.write(realData, 0, realData.length);
+					// outgoingHandler.feedOutput(realData, 0, realData.length);
+					// out.write(transferBuffer, offset, read - offset);
 					out.write(transferBuffer, offset, read - offset);
-				else
-					out.write(transferBuffer, 0, read);
+				} else {
+					byte[] realData = new byte[read];
+					for (int i = 0; i < read; i++) {
+						realData[i] = transferBuffer[i];
+					}
+					realData = ProxyMain.getPluginsManager().getModifiedData(4, parent.getControlDirective(), realData,
+							lastRepsonse);
+					out.write(realData, 0, realData.length);
+					// out.write(transferBuffer, 0, read);
+				}
 				read = in.read(transferBuffer, 0, transferBuffer.length);
 			}
 		} catch (IOException e) {

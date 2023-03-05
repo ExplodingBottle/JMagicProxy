@@ -147,6 +147,32 @@ public class PluginsManager {
 	}
 
 	/**
+	 * Notifies the plugin that we are closing a directive.
+	 * 
+	 * @param informations The data sent by the client.
+	 */
+	public void notifyDirectiveClose(Object informations) {
+		boolean found = false;
+		for (ProxyPlugin plugin : plugins) {
+			if (informations instanceof ConnectionDirective) {
+				plugin.onDirectiveClosed((ConnectionDirective) informations);
+			} else if (informations instanceof SSLControlDirective) {
+				plugin.onDirectiveClosedSSL((SSLControlDirective) informations);
+			} else {
+				throw new IllegalArgumentException("Informations must be ConnectionDirective or SSLControlDirective.");
+			}
+			logger.log(LoggingLevel.INFO,
+					"The plugin \"" + plugin.returnPluginName() + "\" received the directive closure the first.");
+			found = true;
+			break;
+		}
+		if (!found) {
+			logger.log(LoggingLevel.WARN,
+					"No plugin received the directive closure message, this could be due to a misconfiguration, like a removal of the BasicProxy plugin.");
+		}
+	}
+
+	/**
 	 * Gives you the modified data to be sent to the client or server, in SSL or
 	 * not.
 	 * 
@@ -155,27 +181,43 @@ public class PluginsManager {
 	 *                     HTTPS(Server => Client)
 	 * @param informations The directive.
 	 * @param info2        The additional informations.
-	 * @param original     Original data.
+	 * @param original     Original data, if null, raw data functions will be used.
 	 * @return The modified data or the same data.
 	 */
 	public byte[] getModifiedData(int nDir, Object informations, byte[] original, Object info2) {
 		assert nDir == 1 || nDir == 2 || nDir == 3 || nDir == 4;
 		byte[] data = null;
+		boolean did = false;
 		for (ProxyPlugin plugin : plugins) {
 			byte[] dir = null;
 			if (nDir == 1) {
 				dir = plugin.getModifiedAnswerForServer(original, (ConnectionDirective) informations);
+				did = true;
 			}
 			if (nDir == 2) {
-				dir = plugin.getModifiedAnswerForClient(original, (ConnectionDirective) informations,
-						(IncomingTransferDirective) info2);
+				if (original != null) {
+					dir = plugin.getModifiedAnswerForClient(original, (ConnectionDirective) informations,
+							(IncomingTransferDirective) info2);
+					did = true;
+				} else {
+					dir = plugin.getRawBytesToClient((ConnectionDirective) informations,
+							(IncomingTransferDirective) info2);
+					did = true;
+				}
 			}
 			if (nDir == 3) {
 				dir = plugin.getModifiedAnswerForServerSSL(original, (SSLControlDirective) informations);
+				did = true;
 			}
 			if (nDir == 4) {
-				dir = plugin.getModifiedAnswerForClientSSL(original, (SSLControlDirective) informations,
-						(HttpResponse) info2);
+				if (original != null) {
+					dir = plugin.getModifiedAnswerForClientSSL(original, (SSLControlDirective) informations,
+							(HttpResponse) info2);
+					did = true;
+				} else {
+					dir = plugin.getRawBytesToClientSSL((SSLControlDirective) informations, (HttpResponse) info2);
+					did = true;
+				}
 			}
 			if (dir != null) {
 				data = dir;
@@ -184,7 +226,7 @@ public class PluginsManager {
 				break;
 			}
 		}
-		if (data == null) {
+		if (!did) {
 			logger.log(LoggingLevel.WARN,
 					"Modified data was null, this could be due to a misconfiguration, like a removal of the BasicProxy plugin.");
 		}

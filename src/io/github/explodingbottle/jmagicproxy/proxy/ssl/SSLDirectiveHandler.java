@@ -17,18 +17,13 @@
  */
 package io.github.explodingbottle.jmagicproxy.proxy.ssl;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 
 import javax.net.ssl.SSLSocket;
 
@@ -92,15 +87,7 @@ public class SSLDirectiveHandler {
 			return;
 		}
 		try {
-			outputStream.write((directive.getOutcomingRequest().toHttpRequestLine() + "\r\n").getBytes());
-			directive.getOutcomingRequest().getHeaders().forEach((hKey, hVal) -> {
-				try {
-					outputStream.write((hKey + ": " + hVal + "\r\n").getBytes());
-				} catch (IOException e) {
-					selfLogger.log(LoggingLevel.WARN, "Failed to write a header in the ForEach loop.", e);
-				}
-			});
-			outputStream.write("\r\n".getBytes());
+			outputStream.write((directive.getOutcomingRequest().toHttpRequestBlock()).getBytes());
 		} catch (IOException e) {
 			selfLogger.log(LoggingLevel.WARN, "Failed to write directive content.", e);
 		}
@@ -111,32 +98,14 @@ public class SSLDirectiveHandler {
 	 * This function will open the outgoing connection.
 	 */
 	public void openSocket() {
-		selfLogger.log(LoggingLevel.INFO, "Opening an outgoing connection for SSL for host " + directive.getHost() + ":"
-				+ directive.getPort() + ".");
 		SSLObjectsProvider obProv = ProxyMain.getSSLObjectsProvider();
-		if (directive.isUsingFile()) {
-			selfLogger.log(LoggingLevel.INFO,
-					"The connection will be using a file located at " + directive.getFileInput() + ".");
-			try {
-				inputStream = new FileInputStream(directive.getFileInput());
-				parent.getHeartOutput().write(new String("HTTP/1.1 200 OK\r\n").getBytes());
-				parent.getHeartOutput().write(new String("Connection: Keep-Alive\r\n").getBytes());
-				SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-				f.setTimeZone(TimeZone.getTimeZone("GMT"));
-				String lM = f.format(new Date(directive.getFileInput().lastModified()));
-				parent.getHeartOutput().write(new String("Last-Modified: " + lM + "\r\n").getBytes());
-				parent.getHeartOutput().write(new String("Content-Type: application/octet-stream\r\n").getBytes());
-				parent.getHeartOutput().write(
-						new String("Content-Length: " + directive.getFileInput().length() + "\r\n\r\n").getBytes());
-				ioPipe = new SSLInputOutputPipeThread(inputStream, parent.getHeartOutput(), this);
-				ioPipe.start();
-				readyToFlush = true;
-				registerToWaitingQueue(null, 0, 0, true);
-			} catch (IOException e) {
-				selfLogger.log(LoggingLevel.WARN, "Failed to make a fake connection using a file.", e);
-				finishHandler(true);
-			}
+		if (!directive.isRemoteConnect()) {
+			ioPipe = new SSLInputOutputPipeThread(null, parent.getHeartOutput(), this);
+			ioPipe.start();
+			selfLogger.log(LoggingLevel.INFO, "Won't create a remote connection due to the nature of the directive.");
 		} else {
+			selfLogger.log(LoggingLevel.INFO, "Opening an outgoing connection for SSL for host " + directive.getHost()
+					+ ":" + directive.getPort() + ".");
 			if (directive.isSSL()) {
 				selfLogger.log(LoggingLevel.INFO, "The connection will be using outgoing SSL");
 				SocketOpeningTool openingTool = new SocketOpeningTool(directive.getHost(), directive.getPort(),
@@ -276,8 +245,9 @@ public class SSLDirectiveHandler {
 	 */
 	public void finishHandler(boolean shouldInterrupt) {
 		if (!isClosed) {
-			selfLogger.log(LoggingLevel.INFO, "Finishing handler with shouldInterrupt=" + shouldInterrupt);
 			isClosed = true;
+			selfLogger.log(LoggingLevel.INFO, "Finishing handler with shouldInterrupt=" + shouldInterrupt);
+			ProxyMain.getPluginsManager().notifyDirectiveClose(directive);
 			if (ioPipe != null)
 				ioPipe.interrupt();
 			try {

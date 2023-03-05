@@ -37,6 +37,8 @@ public class SSLControlDirective {
 
 	private boolean isUsingFile;
 
+	private boolean remoteConnect;
+
 	/**
 	 * Builds a Connection Directive.
 	 * 
@@ -53,6 +55,7 @@ public class SSLControlDirective {
 		this.isSSL = isSSL;
 		this.outcomingRequest = outcomingRequest;
 		isUsingFile = false;
+		remoteConnect = true;
 	}
 
 	/**
@@ -63,6 +66,14 @@ public class SSLControlDirective {
 	public SSLControlDirective(File fileInput) {
 		this.fileInput = fileInput;
 		isUsingFile = true;
+		remoteConnect = false;
+	}
+
+	/**
+	 * Builds a connection directive without any form of connection.
+	 */
+	public SSLControlDirective() {
+		remoteConnect = false;
 	}
 
 	public String toString() {
@@ -107,6 +118,24 @@ public class SSLControlDirective {
 	 */
 	public void setHost(String host) {
 		this.host = host;
+	}
+
+	/**
+	 * Sets if we connect remotely or simulate a connection.
+	 * 
+	 * @param remoteConnect if we connect remotely or simulate a connection.
+	 */
+	public void setRemoteConnect(boolean remoteConnect) {
+		this.remoteConnect = remoteConnect;
+	}
+
+	/**
+	 * Gets if we connect remotely or simulate a connection.
+	 * 
+	 * @return if we connect remotely or simulate a connection.
+	 */
+	public boolean isRemoteConnect() {
+		return remoteConnect;
 	}
 
 	/**

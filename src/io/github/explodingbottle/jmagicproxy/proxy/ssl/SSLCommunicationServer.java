@@ -249,7 +249,6 @@ public class SSLCommunicationServer extends Thread {
 							realData = ProxyMain.getPluginsManager().getModifiedData(3,
 									outgoingHandler.getControlDirective(), realData, null);
 							outgoingHandler.feedOutput(realData, 0, realData.length);
-							// outgoingHandler.feedOutput(buffer, offset, read - offset);
 						}
 					} else {
 						if (outgoingHandler != null) {
@@ -260,13 +259,14 @@ public class SSLCommunicationServer extends Thread {
 							realData = ProxyMain.getPluginsManager().getModifiedData(3,
 									outgoingHandler.getControlDirective(), realData, null);
 							outgoingHandler.feedOutput(realData, 0, realData.length);
-							// outgoingHandler.feedOutput(buffer, 0, read);
 						}
 					}
 					read = heartInput.read(buffer, 0, buffer.length);
 				}
 			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "SSL Communicator Server transfer error.", e);
+				if (!isInterrupted()) {
+					logger.log(LoggingLevel.WARN, "SSL Communicator Server transfer error.", e);
+				}
 			}
 			logger.log(LoggingLevel.INFO, "SSL Communicator Server will now shutdown.");
 			interrupt();

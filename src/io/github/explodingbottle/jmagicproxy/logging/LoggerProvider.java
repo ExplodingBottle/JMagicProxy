@@ -135,9 +135,12 @@ public class LoggerProvider {
 	synchronized void write(String message, LoggingLevel lt) {
 		if (lt == LoggingLevel.INFO) {
 			System.out.println(message);
+			System.out.flush();
 		} else {
 			System.err.println(message);
+			System.err.flush();
 		}
+		// Now flushing to prevent lines not displaying correctly.
 		if (!useLoggingFile)
 			return;
 		messageCache.add(message);

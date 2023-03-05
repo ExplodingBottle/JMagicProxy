@@ -17,18 +17,13 @@
  */
 package io.github.explodingbottle.jmagicproxy.proxy;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
-import java.util.TimeZone;
 
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.api.ConnectionDirective;
@@ -155,15 +150,7 @@ public class ConnectionDirectiveHandler {
 			return;
 		}
 		try {
-			outputStream.write((directive.getOutcomingRequest().toHttpRequestLine() + "\r\n").getBytes());
-			directive.getOutcomingRequest().getHeaders().forEach((hKey, hVal) -> {
-				try {
-					outputStream.write((hKey + ": " + hVal + "\r\n").getBytes());
-				} catch (IOException e) {
-					logger.log(LoggingLevel.WARN, "Failed to write a header in the ForEach loop.", e);
-				}
-			});
-			outputStream.write("\r\n".getBytes());
+			outputStream.write(directive.getOutcomingRequest().toHttpRequestBlock().getBytes());
 		} catch (IOException e) {
 			logger.log(LoggingLevel.WARN, "Failed to write directive content.", e);
 		}
@@ -180,7 +167,7 @@ public class ConnectionDirectiveHandler {
 					"Attempted to open outgoing socket on a closed connection directive handler.");
 			return;
 		}
-		if (!directive.isUsingFile()) {
+		if (directive.isRemoteConnect()) {
 			if (directive.isSSL()) {
 				logger.log(LoggingLevel.INFO, "Opening outgoing socket for " + directive.getHost() + ":"
 						+ directive.getPort() + " with SSL.");
@@ -238,28 +225,9 @@ public class ConnectionDirectiveHandler {
 				}
 			}
 		} else {
-			logger.log(LoggingLevel.INFO, "Opening outgoing file input stream for " + directive.getFileInput());
-			try {
-				inputStream = new FileInputStream(directive.getFileInput());
-				handlerThread.getOutputStream().write(new String("HTTP/1.1 200 OK\r\n").getBytes());
-				handlerThread.getOutputStream().write(new String("Connection: Keep-Alive\r\n").getBytes());
-				SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-				f.setTimeZone(TimeZone.getTimeZone("GMT"));
-				String lM = f.format(new Date(directive.getFileInput().lastModified()));
-				handlerThread.getOutputStream().write(new String("Last-Modified: " + lM + "\r\n").getBytes());
-				handlerThread.getOutputStream()
-						.write(new String("Content-Type: application/octet-stream\r\n").getBytes());
-				handlerThread.getOutputStream().write(
-						new String("Content-Length: " + directive.getFileInput().length() + "\r\n\r\n").getBytes());
-				pipeThread = new SimpleInputOutputPipeThread(inputStream, handlerThread.getOutputStream(), this);
-				pipeThread.start();
-				logger.log(LoggingLevel.INFO, "Outgoing fake socket opened (using file).");
-				readyToFlush = true;
-				registerToWaitingQueue(null, 0, 0, true);
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to make a fake connection using a file.", e);
-				closeSocket();
-			}
+			pipeThread = new SimpleInputOutputPipeThread(null, handlerThread.getOutputStream(), this);
+			pipeThread.start();
+			logger.log(LoggingLevel.INFO, "Won't create a remote connection due to the nature of the directive.");
 		}
 
 	}
@@ -327,6 +295,7 @@ public class ConnectionDirectiveHandler {
 	public void closeSocket() {
 		if (!closed) {
 			closed = true;
+			ProxyMain.getPluginsManager().notifyDirectiveClose(directive);
 			if (pipeThread != null) {
 				pipeThread.interrupt();
 			}
@@ -341,7 +310,8 @@ public class ConnectionDirectiveHandler {
 			} catch (IOException e) {
 				logger.log(LoggingLevel.WARN, "Failed to close the socket coming from outside.", e);
 			}
-			if (!directive.isUsingFile()) {
+
+			if (directive.isRemoteConnect()) {
 				if (directive.isSSL()) {
 					logger.log(LoggingLevel.INFO, "Closed outgoing socket for " + directive.getHost() + ":"
 							+ directive.getPort() + " with SSL.");
@@ -351,7 +321,7 @@ public class ConnectionDirectiveHandler {
 									+ " with request " + directive.getOutcomingRequest().toHttpRequestLine());
 				}
 			} else {
-				logger.log(LoggingLevel.INFO, "Closed outgoing file input stream for " + directive.getFileInput());
+				logger.log(LoggingLevel.INFO, "Closed non-remote-connect handler.");
 			}
 			if (connectionType == ConnectionType.CLOSE) {
 				logger.log(LoggingLevel.INFO, "Closing listening thread as the handler thread is in Close mode.");

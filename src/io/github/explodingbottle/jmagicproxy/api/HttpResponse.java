@@ -44,7 +44,12 @@ public class HttpResponse {
 		this.version = version;
 		this.responseCode = responseCode;
 		this.responseMessage = responseMessage;
-		this.headers = headers;
+		// Sanitizing
+		TreeMap<String, String> headersSan = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+		headers.forEach((s1, s2) -> {
+			headersSan.put(s1, s2);
+		});
+		this.headers = headersSan;
 	}
 
 	public String toString() {
@@ -65,6 +70,20 @@ public class HttpResponse {
 	 */
 	public String toHttpResponseLine() {
 		return version + " " + responseCode + " " + responseMessage;
+	}
+
+	/**
+	 * Creates a full response block.
+	 * 
+	 * @return the created response block.
+	 */
+	public String toHttpResponseBlock() {
+		StringBuilder builder = new StringBuilder(toHttpResponseLine() + "\r\n");
+		getHeaders().forEach((hKey, hVal) -> {
+			builder.append(hKey + ": " + hVal + "\r\n");
+		});
+		builder.append("\r\n");
+		return builder.toString();
 	}
 
 	/**

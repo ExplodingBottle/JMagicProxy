@@ -111,6 +111,20 @@ public class HttpRequestHeader {
 	}
 
 	/**
+	 * Creates a full request block.
+	 * 
+	 * @return the created request block.
+	 */
+	public String toHttpRequestBlock() {
+		StringBuilder builder = new StringBuilder(toHttpRequestLine() + "\r\n");
+		getHeaders().forEach((hKey, hVal) -> {
+			builder.append(hKey + ": " + hVal + "\r\n");
+		});
+		builder.append("\r\n");
+		return builder.toString();
+	}
+
+	/**
 	 * Builds a HTTP Request Header using parameters.
 	 * 
 	 * @param method  The HTTP Method

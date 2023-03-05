@@ -17,8 +17,21 @@
  */
 package io.github.explodingbottle.jmagicproxy.implementation;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 
+import io.github.explodingbottle.jmagicproxy.HardcodedConfig;
 import io.github.explodingbottle.jmagicproxy.ProxyMain;
 import io.github.explodingbottle.jmagicproxy.api.ConnectionDirective;
 import io.github.explodingbottle.jmagicproxy.api.ConnectionType;
@@ -43,8 +56,15 @@ public class BasicProxy extends ProxyPlugin {
 
 	private ProxyLogger logger;
 
+	private byte[] fileReadingBuffer;
+	private Map<Object, FileInputStream> readingFiles;
+	private List<Object> toFinishDirectives;
+
 	public BasicProxy() {
 		logger = ProxyMain.getLoggerProvider().createLogger();
+		readingFiles = Collections.synchronizedMap(new HashMap<Object, FileInputStream>());
+		toFinishDirectives = Collections.synchronizedList(new ArrayList<Object>());
+		fileReadingBuffer = new byte[HardcodedConfig.returnBufferSize()];
 	}
 
 	/**
@@ -178,6 +198,117 @@ public class BasicProxy extends ProxyPlugin {
 	public byte[] getModifiedAnswerForClientSSL(byte[] original, SSLControlDirective linkedDirective,
 			HttpResponse additionalInformations) {
 		return original;
+	}
+
+	private byte[] doReadingJob(Object linkedDirective) {
+		if (toFinishDirectives.contains(linkedDirective)) {
+			toFinishDirectives.remove(linkedDirective);
+			return null;
+		}
+		boolean isUsingFile = false;
+		File inFile = null;
+		if (linkedDirective instanceof ConnectionDirective) {
+			ConnectionDirective cd = ((ConnectionDirective) linkedDirective);
+			isUsingFile = cd.isUsingFile();
+			inFile = cd.getFileInput();
+		}
+		if (linkedDirective instanceof SSLControlDirective) {
+			SSLControlDirective sslCd = ((SSLControlDirective) linkedDirective);
+			isUsingFile = sslCd.isUsingFile();
+			inFile = sslCd.getFileInput();
+		}
+		if (isUsingFile) {
+			if (readingFiles.containsKey(linkedDirective)) {
+				try {
+					int read = readingFiles.get(linkedDirective).read(fileReadingBuffer, 0, fileReadingBuffer.length);
+					if (read != -1) {
+						byte[] b = new byte[read];
+						for (int i = 0; i < read; i++) {
+							b[i] = fileReadingBuffer[i];
+						}
+						return b;
+					} else {
+						readingFiles.get(linkedDirective).close();
+						readingFiles.remove(linkedDirective);
+					}
+				} catch (IOException e) {
+					logger.log(LoggingLevel.WARN, "Failed a file read.", e);
+					try {
+						readingFiles.get(linkedDirective).close();
+						readingFiles.remove(linkedDirective);
+					} catch (IOException e1) {
+						logger.log(LoggingLevel.WARN, "Failed a file close.", e1);
+					}
+				}
+			} else {
+				if (!inFile.exists() || inFile.isDirectory()) {
+					TreeMap<String, String> headers = new TreeMap<String, String>();
+					headers.put("Connection", "Close");
+					HttpResponse response = new HttpResponse("HTTP/1.1", 404, "Not Found", headers);
+					toFinishDirectives.add(linkedDirective);
+					return response.toHttpResponseBlock().getBytes();
+				}
+				logger.log(LoggingLevel.INFO, "Opening outgoing file input stream for " + inFile);
+				try {
+					FileInputStream inputStream = new FileInputStream(inFile);
+					TreeMap<String, String> headers = new TreeMap<String, String>();
+					headers.put("Connection", "Keep-Alive");
+					SimpleDateFormat f = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+					f.setTimeZone(TimeZone.getTimeZone("GMT"));
+					String lM = f.format(new Date(inFile.lastModified()));
+					headers.put("Last-Modified", lM);
+					headers.put("Content-Type", "application/octet-stream");
+					headers.put("Content-Length", "" + inFile.length());
+					HttpResponse response = new HttpResponse("HTTP/1.1", 200, "OK", headers);
+					logger.log(LoggingLevel.INFO, "Outgoing fake socket opened (using file).");
+					readingFiles.put(linkedDirective, inputStream);
+					return response.toHttpResponseBlock().getBytes();
+
+				} catch (IOException e) {
+					TreeMap<String, String> headers = new TreeMap<String, String>();
+					headers.put("Connection", "Close");
+					HttpResponse response = new HttpResponse("HTTP/1.1", 500, "Internal Server Error", headers);
+					toFinishDirectives.add(linkedDirective);
+					logger.log(LoggingLevel.WARN, "Failed to make a fake connection using a file.", e);
+					return response.toHttpResponseBlock().getBytes();
+				}
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public byte[] getRawBytesToClient(ConnectionDirective linkedDirective,
+			IncomingTransferDirective additionalInformations) {
+		return doReadingJob(linkedDirective);
+	}
+
+	@Override
+	public byte[] getRawBytesToClientSSL(SSLControlDirective linkedDirective, HttpResponse additionalInformations) {
+		return doReadingJob(linkedDirective);
+	}
+
+	private void filesCleanup(Object directive) {
+		FileInputStream linkedStream = readingFiles.get(directive);
+		if (linkedStream != null) {
+			try {
+				linkedStream.close();
+			} catch (IOException e) {
+				logger.log(LoggingLevel.WARN, "Failed to close a file stream for cleanup.");
+			}
+		}
+		readingFiles.remove(directive);
+		toFinishDirectives.remove(directive);
+	}
+
+	@Override
+	public void onDirectiveClosed(ConnectionDirective directive) {
+		filesCleanup(directive);
+	}
+
+	@Override
+	public void onDirectiveClosedSSL(SSLControlDirective directive) {
+		filesCleanup(directive);
 	}
 
 }

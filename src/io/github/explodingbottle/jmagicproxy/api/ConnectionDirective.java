@@ -39,6 +39,8 @@ public class ConnectionDirective {
 
 	private boolean isUsingFile;
 
+	private boolean remoteConnect;
+
 	/**
 	 * Builds a Connection Directive.
 	 * 
@@ -60,6 +62,7 @@ public class ConnectionDirective {
 		this.outcomingRequest = outcomingRequest;
 		isUsingFile = false;
 		this.isDirect = isDirect;
+		remoteConnect = true;
 	}
 
 	/**
@@ -70,6 +73,14 @@ public class ConnectionDirective {
 	public ConnectionDirective(File fileInput) {
 		this.fileInput = fileInput;
 		isUsingFile = true;
+		remoteConnect = false;
+	}
+
+	/**
+	 * Builds a connection directive without any form of connection.
+	 */
+	public ConnectionDirective() {
+		remoteConnect = false;
 	}
 
 	public String toString() {
@@ -125,6 +136,24 @@ public class ConnectionDirective {
 	 */
 	public void setHost(String host) {
 		this.host = host;
+	}
+
+	/**
+	 * Sets if we connect remotely or simulate a connection.
+	 * 
+	 * @param remoteConnect if we connect remotely or simulate a connection.
+	 */
+	public void setRemoteConnect(boolean remoteConnect) {
+		this.remoteConnect = remoteConnect;
+	}
+
+	/**
+	 * Gets if we connect remotely or simulate a connection.
+	 * 
+	 * @return if we connect remotely or simulate a connection.
+	 */
+	public boolean isRemoteConnect() {
+		return remoteConnect;
 	}
 
 	/**

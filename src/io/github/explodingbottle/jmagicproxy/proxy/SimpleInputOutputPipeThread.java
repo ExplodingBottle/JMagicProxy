@@ -162,7 +162,21 @@ public class SimpleInputOutputPipeThread extends Thread {
 	public void run() {
 		logger.log(LoggingLevel.INFO, "Signaling pipe startup.");
 		try {
-			int read = in.read(transferBuffer, 0, transferBuffer.length);
+			int read = -1;
+			if (in != null) {
+				read = in.read(transferBuffer, 0, transferBuffer.length);
+			} else {
+				if (!parent.getDirective().isRemoteConnect()) {
+					transferBuffer = ProxyMain.getPluginsManager().getModifiedData(2, parent.getDirective(), null,
+							lastTransferDirective);
+					if (transferBuffer != null) {
+						read = transferBuffer.length;
+					} else {
+						read = -1;
+					}
+				}
+			}
+
 			while (!interrupted() && read != -1) {
 				if (!isInterrupted()) {
 					Integer offset = handleLineRead(read);
@@ -183,7 +197,19 @@ public class SimpleInputOutputPipeThread extends Thread {
 								lastTransferDirective);
 						out.write(realData, 0, realData.length);
 					}
-					read = in.read(transferBuffer, 0, transferBuffer.length);
+					if (in != null) {
+						read = in.read(transferBuffer, 0, transferBuffer.length);
+					} else {
+						if (!parent.getDirective().isRemoteConnect()) {
+							transferBuffer = ProxyMain.getPluginsManager().getModifiedData(2, parent.getDirective(),
+									null, lastTransferDirective);
+							if (transferBuffer != null) {
+								read = transferBuffer.length;
+							} else {
+								read = -1;
+							}
+						}
+					}
 				}
 			}
 			if (read == -1) {
@@ -195,7 +221,8 @@ public class SimpleInputOutputPipeThread extends Thread {
 				logger.log(LoggingLevel.WARN, "An unexpected stream closure happened.", e);
 		}
 		logger.log(LoggingLevel.INFO, "Thread can be interrupted now !");
-		parent.signalThreadClose();
+		parent.signalThreadClose(); // This doesn't close the stream ! It is not contradictory
+		// In fact it does, but it doesn't close the "Client=>Proxy" connection.
 	}
 
 }

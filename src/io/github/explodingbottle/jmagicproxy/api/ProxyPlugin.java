@@ -91,15 +91,39 @@ public abstract class ProxyPlugin {
 			IncomingTransferDirective additionalInformations);
 
 	/**
-	 * Same at {code getModifiedAnswerForServer} but for SSL.
+	 * Same as {code getModifiedAnswerForServer} but for SSL.
 	 */
 	public abstract byte[] getModifiedAnswerForServerSSL(byte[] original, SSLControlDirective linkedDirective);
 
 	/**
-	 * Same at {code getModifiedAnswerForClient} but for SSL.
+	 * Same as {code getModifiedAnswerForClient} but for SSL.
 	 */
 	public abstract byte[] getModifiedAnswerForClientSSL(byte[] original, SSLControlDirective linkedDirective,
 			HttpResponse additionalInformations);
+
+	/**
+	 * Same as {code getModifiedAnswerForClient} but for raw data.
+	 */
+	public abstract byte[] getRawBytesToClient(ConnectionDirective linkedDirective,
+			IncomingTransferDirective additionalInformations);
+
+	/**
+	 * Same as {code getModifiedAnswerForClient} but for raw data with SSL.
+	 */
+	public abstract byte[] getRawBytesToClientSSL(SSLControlDirective linkedDirective,
+			HttpResponse additionalInformations);
+
+	/**
+	 * Called when a directive is closed.
+	 * 
+	 * @param directive The closed directive.
+	 */
+	public abstract void onDirectiveClosed(ConnectionDirective directive);
+
+	/**
+	 * Same as {@code onDirectiveClosed} but with SSL.
+	 */
+	public abstract void onDirectiveClosedSSL(SSLControlDirective directive);
 
 	/**
 	 * This function is used to make the plugin display a better name than only the

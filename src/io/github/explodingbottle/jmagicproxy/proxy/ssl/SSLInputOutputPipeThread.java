@@ -150,7 +150,20 @@ public class SSLInputOutputPipeThread extends Thread {
 	public void run() {
 		logger.log(LoggingLevel.INFO, "Signaling pipe startup for SSL.");
 		try {
-			int read = in.read(transferBuffer, 0, transferBuffer.length);
+			int read = -1;
+			if (in != null) {
+				read = in.read(transferBuffer, 0, transferBuffer.length);
+			} else {
+				if (!parent.getControlDirective().isRemoteConnect()) {
+					transferBuffer = ProxyMain.getPluginsManager().getModifiedData(4, parent.getControlDirective(),
+							null, lastRepsonse);
+					if (transferBuffer != null) {
+						read = transferBuffer.length;
+					} else {
+						read = -1;
+					}
+				}
+			}
 			logger.log(LoggingLevel.INFO, "SSL Pipe has read for the first time " + read + " bytes.");
 			while (!interrupted() && read != -1) {
 				Integer offset = handleLineRead(read);
@@ -176,7 +189,19 @@ public class SSLInputOutputPipeThread extends Thread {
 					out.write(realData, 0, realData.length);
 					// out.write(transferBuffer, 0, read);
 				}
-				read = in.read(transferBuffer, 0, transferBuffer.length);
+				if (in != null) {
+					read = in.read(transferBuffer, 0, transferBuffer.length);
+				} else {
+					if (!parent.getControlDirective().isRemoteConnect()) {
+						transferBuffer = ProxyMain.getPluginsManager().getModifiedData(4, parent.getControlDirective(),
+								null, lastRepsonse);
+						if (transferBuffer != null) {
+							read = transferBuffer.length;
+						} else {
+							read = -1;
+						}
+					}
+				}
 			}
 		} catch (IOException e) {
 			if (!isInterrupted())

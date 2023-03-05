@@ -178,7 +178,7 @@ public class SSLInputOutputPipeThread extends Thread {
 					out.write(realData, 0, realData.length);
 					// outgoingHandler.feedOutput(realData, 0, realData.length);
 					// out.write(transferBuffer, offset, read - offset);
-					out.write(transferBuffer, offset, read - offset);
+					//out.write(transferBuffer, offset, read - offset);
 				} else {
 					byte[] realData = new byte[read];
 					for (int i = 0; i < read; i++) {

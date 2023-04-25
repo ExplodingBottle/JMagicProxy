@@ -27,7 +27,7 @@ This project requires ExplodingAULib for recompiling.
    | *proxy.logging.logsfolder*				| Represents the folder in which you will find log files. |
    | *proxy.ssl.enabled*						| Choose whether or not if SSL will be supported. |
    | *proxy.ssl.sortmode*				| Represents the sorting mode used to determine if a direct SSL connection must be established or instead if the Proxy must handle it. **NONE** means that every SSL requests will be handled by the proxy. **INCLUDE** means that only listed requests will be handled by the proxy and **EXCLUDE** means that only listed requests will be sent through a tunel directly. |
-   | *proxy.ssl.sortlist*						| A list of requests splited with semi-colons that will be used with the sort mode. * can be used to mean everything. An example could be *.google.com;*.microsoft.com |
+   | *proxy.ssl.sortlist*						| A list of requests splited with semi-colons that will be used with the sort mode. \* can be used to mean everything. An example could be \*.google.com;\*.microsoft.com |
    | *proxy.plugin.wuproxy.redirwuclient*			| A setting specific for WUProxy: Defines if we must simulate an older version of the Windows Update client in order to allow Windows XP to update |
 3) **Known issues**
 

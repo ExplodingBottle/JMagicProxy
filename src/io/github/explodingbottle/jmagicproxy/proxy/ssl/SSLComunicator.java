@@ -98,10 +98,8 @@ public class SSLComunicator {
 				HttpResponse hrqh = new HttpResponse("HTTP/1.1", 200, "Connection Established",
 						new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
 				output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
-				inputOutgoing = transferSocket.getInputStream();
-				outputOutgoing = transferSocket.getOutputStream();
 				if (transferSocket != null) {
-					transferPipeOutToIn = new SimpleTransferPipe(inputOutgoing, output);
+					transferPipeOutToIn = new SimpleTransferPipe(inputOutgoing, output, this);
 					transferPipeOutToIn.start();
 				}
 				logger.log(LoggingLevel.INFO, "Direct connection established.");

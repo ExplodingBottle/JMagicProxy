@@ -19,6 +19,7 @@ package io.github.explodingbottle.jmagicproxy;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.Security;
 
 import io.github.explodingbottle.explodingau.ExplodingAULib;
 import io.github.explodingbottle.jmagicproxy.api.PluginsManager;
@@ -166,16 +167,10 @@ public class ProxyMain {
 		lgp.openLogStream(new File(logsFolder, logPath));
 		pluginsManager = new PluginsManager(propsProvider.getAsString(PropertyKey.PROXY_PLUGINS));
 		pluginsManager.loadPlugins();
-		if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_WARN_ALGORITHMS)) {
-			DisabledAlgorithmsWarner warner = new DisabledAlgorithmsWarner();
-			if (warner.mustWarn()) {
-				mainLogger.log(LoggingLevel.WARN,
-						"The system has detected that algorithms were present in the jdk.tls.disabledAlgorithms property of java.security. "
-								+ "This will cause issues with SSL and old algorithms.");
-			}
-		}
 		if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_ENABLED)) {
 			mainLogger.log(LoggingLevel.INFO, "SSL is enabled, proceeding to SSL setup.");
+			mainLogger.log(LoggingLevel.WARN,
+					"Please note that every disabled protocols has been enabled again only during the use of this program.");
 			sslObjectsProvider = new SSLObjectsProvider(
 					new File(propsProvider.getAsString(PropertyKey.PROXY_SSL_KEYSTORE_PATH)),
 					propsProvider.getAsString(PropertyKey.PROXY_SSL_KEYSTORE_PASSWORD),
@@ -203,6 +198,10 @@ public class ProxyMain {
 		mainLogger.log(LoggingLevel.INFO, "User is asking to terminate, sending shutdown signal.");
 		shutdownThread.start();
 
+	}
+
+	static {
+		Security.setProperty("jdk.tls.disabledAlgorithms", "");
 	}
 
 }

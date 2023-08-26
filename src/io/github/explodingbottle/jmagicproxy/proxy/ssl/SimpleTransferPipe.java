@@ -42,6 +42,8 @@ class SimpleTransferPipe extends Thread {
 
 	private ProxyLogger logger;
 
+	private SSLComunicator communicator;
+
 	/**
 	 * This is the constructor of the transfer pipe.
 	 * 
@@ -55,6 +57,18 @@ class SimpleTransferPipe extends Thread {
 		logger = ProxyMain.getLoggerProvider().createLogger();
 	}
 
+	/**
+	 * This is the constructor of the transfer pipe.
+	 * 
+	 * @param input        Represents the input that will feed the output.
+	 * @param output       Represents the output that will be feed.
+	 * @param communicator Represents the parent SSL communicator (if any).
+	 */
+	public SimpleTransferPipe(InputStream input, OutputStream output, SSLComunicator communicator) {
+		this(input, output);
+		this.communicator = communicator;
+	}
+
 	public void run() {
 		try {
 			int readedLength = input.read(buffer, 0, buffer.length);
@@ -63,8 +77,12 @@ class SimpleTransferPipe extends Thread {
 				readedLength = input.read(buffer, 0, buffer.length);
 			}
 		} catch (IOException e) {
-			if (!isInterrupted())
+			if (!isInterrupted()) {
 				logger.log(LoggingLevel.WARN, "A tranfer failed for SimpleTransferPipe.", e);
+			}
+		}
+		if (communicator != null) {
+			communicator.stopCommunicator();
 		}
 	}
 

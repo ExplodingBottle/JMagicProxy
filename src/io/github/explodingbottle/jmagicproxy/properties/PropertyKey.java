@@ -39,7 +39,8 @@ public enum PropertyKey {
 	PROXY_SSL_SORT_MODE("proxy.ssl.sortmode", "NONE", String.class),
 	PROXY_SSL_SORT_LIST("proxy.ssl.sortlist", "*", String.class),
 	WUPROXY_REDIRECT_WUCLIENT("proxy.plugins.wuproxy.redirwuclient", false, Boolean.class),
-	PROXY_SSL_SCAN_STARTING_PORT("proxy.ssl.scan.startingport", 9784, Integer.class);
+	PROXY_SSL_SCAN_STARTING_PORT("proxy.ssl.scan.startingport", 9784, Integer.class),
+	PROXY_SSL_ENABLE_SSLV3("proxy.ssl.enable.sslv3", false, Boolean.class);
 
 	private String propKey;
 	private Object defaultVal;

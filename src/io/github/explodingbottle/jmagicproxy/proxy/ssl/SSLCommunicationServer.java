@@ -116,6 +116,20 @@ public class SSLCommunicationServer extends Thread {
 			try {
 				server = (SSLServerSocket) obProv.getFactoryServer().createServerSocket(testPort, 0,
 						InetAddress.getLoopbackAddress());
+				if (ProxyMain.getPropertiesProvider().getAsBoolean(PropertyKey.PROXY_SSL_ENABLE_SSLV3)) {
+					boolean canEnableSSLv3 = false;
+					for (String protocol : server.getSupportedProtocols()) {
+						if (protocol.equals("SSLv3")) {
+							canEnableSSLv3 = true;
+							break;
+						}
+					}
+					if (canEnableSSLv3) {
+						server.setEnabledProtocols(server.getSupportedProtocols());
+					} else {
+						logger.log(LoggingLevel.WARN, "Failed to enable SSLv3 because not a supported protocol.");
+					}
+				}
 			} catch (BindException e) {
 				testPort++;
 			} catch (IOException e) {

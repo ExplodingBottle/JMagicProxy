@@ -169,6 +169,9 @@ public class ProxyMain {
 		pluginsManager.loadPlugins();
 		if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_ENABLED)) {
 			mainLogger.log(LoggingLevel.INFO, "SSL is enabled, proceeding to SSL setup.");
+			if (propsProvider.getAsBoolean(PropertyKey.PROXY_SSL_ENABLE_SSLV3)) {
+				mainLogger.log(LoggingLevel.INFO, "SSLv3 will be allowed for every SSL connections.");
+			}
 			mainLogger.log(LoggingLevel.WARN,
 					"Please note that every disabled protocols has been enabled again only during the use of this program.");
 			sslObjectsProvider = new SSLObjectsProvider(

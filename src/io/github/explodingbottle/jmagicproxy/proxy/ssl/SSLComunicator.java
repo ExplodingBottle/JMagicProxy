@@ -75,21 +75,6 @@ public class SSLComunicator {
 	}
 
 	public void startConnection() {
-		if (!ProxyMain.getPropertiesProvider().getAsBoolean(PropertyKey.PROXY_SSL_ENABLED)) {
-			try {
-				HttpResponse hrqh = new HttpResponse("HTTP/1.1", 503, "Service Unavailable",
-						new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
-				output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
-				logger.log(LoggingLevel.WARN,
-						"An attempt to connect with SSL has been caught while SSL being disabled.");
-				stopCommunicator();
-				return;
-			} catch (IOException e) {
-				logger.log(LoggingLevel.WARN, "Failed to write the response line.", e);
-				stopCommunicator();
-				return;
-			}
-		}
 		if (parent.getDirective().isDirect()) {
 			try {
 				transferSocket = new Socket(originalHost, originalPort);
@@ -109,6 +94,21 @@ public class SSLComunicator {
 				return;
 			}
 		} else {
+			if (!ProxyMain.getPropertiesProvider().getAsBoolean(PropertyKey.PROXY_SSL_ENABLED)) {
+				try {
+					HttpResponse hrqh = new HttpResponse("HTTP/1.1", 503, "Service Unavailable",
+							new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER));
+					output.write((hrqh.toHttpResponseLine() + "\r\n\r\n").getBytes());
+					logger.log(LoggingLevel.WARN,
+							"An attempt to connect with SSL has been caught while SSL being disabled.");
+					stopCommunicator();
+					return;
+				} catch (IOException e) {
+					logger.log(LoggingLevel.WARN, "Failed to write the response line.", e);
+					stopCommunicator();
+					return;
+				}
+			}
 			server = new SSLCommunicationServer(this);
 			Integer serverPort = server.prepareServerSocket();
 			try {
